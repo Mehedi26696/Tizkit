@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class DiagramLatexGenerator:
                     .replace('{', '\\{')
                     .replace('}', '\\}'))
 
-    def _normalize_colors(self, node: Dict[str, Any]) -> (str, str):
+    def _normalize_colors(self, node: Dict[str, Any]) -> Tuple[str, str]:
         """Normalize fill/draw color field names across node data. Always return valid TikZ color names."""
         fill = node.get("fillColor") or node.get("fill") or "lightgray"
         draw = node.get("strokeColor") or node.get("draw") or "mediumgray"
