@@ -107,12 +107,6 @@ except Exception:
     logger.exception("Failed to import/include ImageToLatex router")
 
 
-# Attempt to generate the OpenAPI schema now to catch and log schema
-# generation errors early (helps diagnose why /docs may hang).
-try:
-    _ = app.openapi()
-except Exception:
-    logger.exception("Failed to generate OpenAPI schema")
  
 
 
