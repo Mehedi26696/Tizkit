@@ -1,0 +1,8 @@
+venv/
+*.env
+__pycache__/
+*.pyc
+tectonic/
+poppler-23.01.0/
+fontconfig/
+build/
