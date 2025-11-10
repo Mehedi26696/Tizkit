@@ -46,16 +46,14 @@ class TableLatexCompiler:
                 print("TableCompiler: Document written, compiling to PDF...")
                 
                 # Try Tectonic first, then fallback to other methods
-                success, error_msg = self._compile_with_tectonic(tex_file)
+                success, tectonic_error = self._compile_with_tectonic(tex_file)
+                print(f"TableCompiler: Tectonic compile result: success={success}")
+                if tectonic_error:
+                    print(f"TableCompiler: Tectonic error message (first 500 chars): {tectonic_error[:500]}")
+                
                 if not success:
-                    print(f"TableCompiler: Tectonic failed: {error_msg}")
-                    # Try other LaTeX engines as fallback
-                    success, error_msg = self._compile_with_pdflatex(tex_file)
-                    if not success:
-                        print(f"TableCompiler: All compilation methods failed, creating mock PDF")
-                        success, error_msg = self._create_mock_pdf(tex_file)
-                        if not success:
-                            return False, None, error_msg
+                    print(f"TableCompiler: Tectonic compilation failed")
+                    return False, None, self._format_compilation_error(tectonic_error)
                 
                 pdf_file = tex_file.with_suffix('.pdf')
                 
@@ -156,65 +154,55 @@ class TableLatexCompiler:
         except Exception as e:
             return False, f"Tectonic compilation error: {str(e)}"
     
-    def _compile_with_pdflatex(self, tex_file: Path) -> Tuple[bool, Optional[str]]:
-        """Fallback: Try to compile with pdflatex"""
-        try:
-            print("TableCompiler: Trying pdflatex as fallback...")
-            
-            # Use config to get pdflatex paths
-            pdflatex_paths = settings.get_pdflatex_paths()
-            
-            pdflatex_cmd = None
-            for path in pdflatex_paths:
-                try:
-                    result = subprocess.run([path, '--version'], capture_output=True, timeout=10)
-                    if result.returncode == 0:
-                        pdflatex_cmd = path
-                        print(f"TableCompiler: Found pdflatex at: {path}")
-                        break
-                except (FileNotFoundError, subprocess.TimeoutExpired):
-                    continue
-            
-            if not pdflatex_cmd:
-                return False, "pdflatex not found"
-            
-            # Change to the directory containing the tex file
-            original_dir = os.getcwd()
-            os.chdir(tex_file.parent)
-            
-            try:
-                print(f"TableCompiler: Running {pdflatex_cmd} on {tex_file.name}")
-                result = subprocess.run(
-                    [pdflatex_cmd, '-interaction=nonstopmode', '-halt-on-error', tex_file.name],
-                    capture_output=True,
-                    text=True,
-                    timeout=self.timeout,
-                    cwd=tex_file.parent
-                )
+    def _format_compilation_error(self, error_msg: str) -> str:
+        """
+        Format LaTeX compilation error for better readability
+        Extract key information from Tectonic error messages
+        """
+        if not error_msg:
+            return "LaTeX compilation failed with unknown error"
+        
+        # Remove Fontconfig warnings (not actual errors)
+        lines = error_msg.split('\n')
+        filtered_lines = [
+            line for line in lines 
+            if not line.strip().startswith('Fontconfig warning:')
+        ]
+        
+        important_lines = []
+        error_found = False
+        
+        for i, line in enumerate(filtered_lines):
+            line_lower = line.lower()
+            # Look for key error indicators
+            if any(keyword in line_lower for keyword in ['error:', 'undefined', 'missing', 'emergency stop', 'halted']):
+                error_found = True
+                # Include context (previous line if it has useful info)
+                if i > 0 and filtered_lines[i-1].strip() and not filtered_lines[i-1].strip().startswith('Fontconfig'):
+                    prev_line = filtered_lines[i-1].strip()
+                    if prev_line not in important_lines:
+                        important_lines.append(prev_line)
                 
-                print(f"TableCompiler: pdflatex return code: {result.returncode}")
+                important_lines.append(line.strip())
                 
-                if result.returncode != 0:
-                    error_msg = f"pdflatex failed with return code {result.returncode}"
-                    if result.stderr:
-                        error_msg += f": {result.stderr[:500]}"
-                    return False, error_msg
-                
-                # Check if PDF was created
-                pdf_file = tex_file.with_suffix('.pdf')
-                if not pdf_file.exists():
-                    return False, "PDF file was not created by pdflatex"
-                
-                print("TableCompiler: pdflatex compilation successful")
-                return True, None
-                
-            finally:
-                os.chdir(original_dir)
-            
-        except subprocess.TimeoutExpired:
-            return False, "pdflatex compilation timed out"
-        except Exception as e:
-            return False, f"pdflatex compilation error: {str(e)}"
+                # Include next line if it provides context (like "See the LaTeX manual...")
+                if i < len(filtered_lines) - 1:
+                    next_line = filtered_lines[i+1].strip()
+                    if next_line and not next_line.startswith('Fontconfig') and 'See the LaTeX' not in next_line:
+                        important_lines.append(next_line)
+        
+        # If we found specific errors, format them nicely
+        if important_lines:
+            formatted = "LaTeX Compilation Error:\n\n" + "\n".join(important_lines[:10])  # Limit to first 10 relevant lines
+            return formatted
+        
+        # If no specific errors found but we have filtered content
+        if filtered_lines:
+            relevant_content = '\n'.join(filtered_lines[:20])
+            return f"LaTeX Compilation Error:\n\n{relevant_content}"
+        
+        # Otherwise return first 1000 chars of original error message
+        return f"LaTeX Compilation Error:\n\n{error_msg[:1000]}"
     
     def _create_complete_document(self, latex_code: str) -> str:
         """Create a complete LaTeX document optimized for tables"""

@@ -83,21 +83,6 @@ class Settings:
         candidates.append(os.path.join(os.getcwd(), "tectonic", "tectonic.exe"))
         return candidates
 
-    def get_pdflatex_paths(self) -> list[str]:
-        """Return candidate paths for the pdflatex executable.
-
-        Includes the plain `pdflatex` so systems with TeX on PATH will work,
-        and common Windows MikTeX/TeX Live locations.
-        """
-        candidates = []
-        # If user configured a TECTONIC_PATH pointing to a texlive/texbin dir, try pdflatex there
-        # but we prefer explicit pdflatex names
-        candidates.extend(["pdflatex", "pdflatex.exe"])
-        # Common TeX Live on Windows (program files)
-        candidates.append(r"C:\Program Files\MiKTeX 2.9\miktex\bin\x64\pdflatex.exe")
-        candidates.append(r"C:\texlive\2020\bin\win32\pdflatex.exe")
-        return candidates
-
     def get_poppler_paths(self) -> list[str]:
         """Return candidate directories that contain poppler binaries (pdftoppm, etc.).
 

@@ -28,13 +28,13 @@ async def compile_diagram_latex(request: CompileRequest):
     try:
         success, output, error_msg = compiler.compile_latex(request.latex_code, request.output_format)
         if not success:
-            # Return error details in JSON response
+            # Return detailed compilation error as JSON
             return JSONResponse(
-                status_code=422,
+                status_code=400,
                 content={
-                    "success": False,
-                    "error": error_msg,
-                    "message": "Compilation failed",
+                    "detail": error_msg,
+                    "error_type": "compilation_error",
+                    "latex_code": request.latex_code[:500] + "..." if len(request.latex_code) > 500 else request.latex_code
                 }
             )
         return StreamingResponse(BytesIO(output), media_type="application/pdf" if request.output_format == "pdf" else "image/png")
@@ -43,9 +43,8 @@ async def compile_diagram_latex(request: CompileRequest):
         return JSONResponse(
             status_code=500,
             content={
-                "success": False,
-                "error": str(e),
-                "message": "Internal server error"
+                "detail": f"Internal server error: {str(e)}",
+                "error_type": "server_error"
             }
         )
 

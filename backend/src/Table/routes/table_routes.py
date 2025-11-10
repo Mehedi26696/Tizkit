@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from ..schemas.table_schemas import TableGenerateRequest, TableGenerateResponse
 from ..services.latex_generator import table_latex_generator
@@ -56,13 +56,24 @@ class CompileRequest(BaseModel):
 async def compile_table_latex(request: CompileRequest):
     """
     Compile LaTeX code into the specified output format (PDF or PNG).
+    Returns error details in JSON if compilation fails.
     """
     try:
         success, output, error_msg = compiler.compile_latex(request.latex_code, request.output_format)
         if not success:
-            raise HTTPException(status_code=500, detail=f"Compilation failed: {error_msg}")
+            # Return detailed compilation error as JSON
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": error_msg,
+                    "error_type": "compilation_error",
+                    "latex_code": request.latex_code[:500] + "..." if len(request.latex_code) > 500 else request.latex_code
+                }
+            )
 
         return StreamingResponse(BytesIO(output), media_type="application/pdf" if request.output_format == "pdf" else "image/png")
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Compilation error: {str(e)}")
+        logger.error(f"Table compilation error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

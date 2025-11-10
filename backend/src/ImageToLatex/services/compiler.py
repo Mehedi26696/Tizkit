@@ -47,19 +47,15 @@ class ImageToLatexCompiler:
 					f.write(complete_latex)
 				print(f"ImageToLatexCompiler: Written LaTeX to {tex_file}")
 				print("ImageToLatexCompiler: Document written, compiling to PDF...")
-				success, error_msg = self._compile_with_tectonic(tex_file)
-				print(f"ImageToLatexCompiler: Tectonic compile result: success={success}, error_msg={error_msg}")
+				success, tectonic_error = self._compile_with_tectonic(tex_file)
+				print(f"ImageToLatexCompiler: Tectonic compile result: success={success}")
+				if tectonic_error:
+					print(f"ImageToLatexCompiler: Tectonic error message (first 500 chars): {tectonic_error[:500]}")
+				
 				if not success:
-					print(f"ImageToLatexCompiler: Tectonic failed: {error_msg}")
-					success, error_msg = self._compile_with_pdflatex(tex_file)
-					print(f"ImageToLatexCompiler: pdflatex compile result: success={success}, error_msg={error_msg}")
-					if not success:
-						print(f"ImageToLatexCompiler: All compilation methods failed, creating mock PDF")
-						success, error_msg = self._create_mock_pdf(tex_file)
-						print(f"ImageToLatexCompiler: Mock PDF result: success={success}, error_msg={error_msg}")
-						if not success:
-							print(f"ImageToLatexCompiler: Failed to create mock PDF: {error_msg}")
-							return False, None, error_msg
+					print(f"ImageToLatexCompiler: Tectonic compilation failed")
+					return False, None, self._format_compilation_error(tectonic_error)
+				
 				pdf_file = tex_file.with_suffix('.pdf')
 				print(f"ImageToLatexCompiler: PDF file path: {pdf_file}")
 				# DEBUG: Copy PDF to persistent debug directory for inspection
@@ -101,64 +97,113 @@ class ImageToLatexCompiler:
 	def _compile_with_tectonic(self, tex_file: Path) -> Tuple[bool, Optional[str]]:
 		try:
 			tectonic_paths = settings.get_tectonic_paths()
+			print(f"ImageToLatexCompiler: Searching for Tectonic in {len(tectonic_paths)} paths...")
 			tectonic_cmd = None
 			for path in tectonic_paths:
+				print(f"ImageToLatexCompiler: Trying Tectonic path: {path}")
 				try:
 					result = subprocess.run([path, '--version'], capture_output=True, timeout=10)
 					if result.returncode == 0:
 						tectonic_cmd = path
+						print(f"ImageToLatexCompiler: Found working Tectonic at: {path}")
 						break
-				except (FileNotFoundError, subprocess.TimeoutExpired):
-					continue
+					else:
+						print(f"ImageToLatexCompiler: Path {path} returned non-zero exit code")
+				except FileNotFoundError:
+					print(f"ImageToLatexCompiler: Path {path} not found")
+				except subprocess.TimeoutExpired:
+					print(f"ImageToLatexCompiler: Path {path} timed out")
+				except Exception as e:
+					print(f"ImageToLatexCompiler: Path {path} error: {str(e)}")
+			
 			if not tectonic_cmd:
+				print("ImageToLatexCompiler: No working Tectonic found")
 				return False, "Tectonic not found"
+			
+			print(f"ImageToLatexCompiler: Using Tectonic: {tectonic_cmd}")
+			print(f"ImageToLatexCompiler: Compiling file: {tex_file}")
 			original_dir = os.getcwd()
 			os.chdir(tex_file.parent)
+			print(f"ImageToLatexCompiler: Changed to directory: {tex_file.parent}")
 			try:
 				env = os.environ.copy()
 				env['FONTCONFIG_FILE'] = ''
 				env['FONTCONFIG_PATH'] = ''
 				env['TECTONIC_MINIMAL_MODE'] = '1'
+				print(f"ImageToLatexCompiler: Running Tectonic with minimal mode...")
 				result = subprocess.run([tectonic_cmd, str(tex_file)], capture_output=True, env=env, timeout=self.timeout)
 				os.chdir(original_dir)
+				
+				print(f"ImageToLatexCompiler: Tectonic exit code: {result.returncode}")
+				if result.stdout:
+					print(f"ImageToLatexCompiler: Tectonic stdout (first 300 chars): {result.stdout.decode('utf-8', errors='ignore')[:300]}")
+				if result.stderr:
+					print(f"ImageToLatexCompiler: Tectonic stderr (first 300 chars): {result.stderr.decode('utf-8', errors='ignore')[:300]}")
+				
 				if result.returncode == 0:
+					print("ImageToLatexCompiler: Tectonic compilation successful!")
 					return True, None
 				else:
-					return False, result.stderr.decode('utf-8')
+					error_msg = result.stderr.decode('utf-8')
+					print(f"ImageToLatexCompiler: Tectonic compilation failed with error")
+					return False, error_msg
 			except Exception as e:
 				os.chdir(original_dir)
+				print(f"ImageToLatexCompiler: Exception during Tectonic compilation: {str(e)}")
 				return False, str(e)
 		except Exception as e:
+			print(f"ImageToLatexCompiler: Exception in _compile_with_tectonic: {str(e)}")
 			return False, str(e)
 
-	def _compile_with_pdflatex(self, tex_file: Path) -> Tuple[bool, Optional[str]]:
-		try:
-			pdflatex_paths = settings.get_pdflatex_paths()
-			pdflatex_cmd = None
-			for path in pdflatex_paths:
-				try:
-					result = subprocess.run([path, '--version'], capture_output=True, timeout=10)
-					if result.returncode == 0:
-						pdflatex_cmd = path
-						break
-				except (FileNotFoundError, subprocess.TimeoutExpired):
-					continue
-			if not pdflatex_cmd:
-				return False, "pdflatex not found"
-			original_dir = os.getcwd()
-			os.chdir(tex_file.parent)
-			try:
-				result = subprocess.run([pdflatex_cmd, str(tex_file)], capture_output=True, timeout=self.timeout)
-				os.chdir(original_dir)
-				if result.returncode == 0:
-					return True, None
-				else:
-					return False, result.stderr.decode('utf-8')
-			except Exception as e:
-				os.chdir(original_dir)
-				return False, str(e)
-		except Exception as e:
-			return False, str(e)
+	def _format_compilation_error(self, error_msg: str) -> str:
+		"""
+		Format LaTeX compilation error for better readability
+		Extract key information from Tectonic error messages
+		"""
+		if not error_msg:
+			return "LaTeX compilation failed with unknown error"
+		
+		# Remove Fontconfig warnings (not actual errors)
+		lines = error_msg.split('\n')
+		filtered_lines = [
+			line for line in lines 
+			if not line.strip().startswith('Fontconfig warning:')
+		]
+		
+		important_lines = []
+		error_found = False
+		
+		for i, line in enumerate(filtered_lines):
+			line_lower = line.lower()
+			# Look for key error indicators
+			if any(keyword in line_lower for keyword in ['error:', 'undefined', 'missing', 'emergency stop', 'halted']):
+				error_found = True
+				# Include context (previous line if it has useful info)
+				if i > 0 and filtered_lines[i-1].strip() and not filtered_lines[i-1].strip().startswith('Fontconfig'):
+					prev_line = filtered_lines[i-1].strip()
+					if prev_line not in important_lines:
+						important_lines.append(prev_line)
+				
+				important_lines.append(line.strip())
+				
+				# Include next line if it provides context (like "See the LaTeX manual...")
+				if i < len(filtered_lines) - 1:
+					next_line = filtered_lines[i+1].strip()
+					if next_line and not next_line.startswith('Fontconfig') and 'See the LaTeX' not in next_line:
+						important_lines.append(next_line)
+		
+		# If we found specific errors, format them nicely
+		if important_lines:
+			formatted = "LaTeX Compilation Error:\n\n" + "\n".join(important_lines[:10])  # Limit to first 10 relevant lines
+			return formatted
+		
+		# If no specific errors found but we have filtered content
+		if filtered_lines:
+			relevant_content = '\n'.join(filtered_lines[:20])
+			return f"LaTeX Compilation Error:\n\n{relevant_content}"
+		
+		# Otherwise return first 1000 chars of original error message
+		return f"LaTeX Compilation Error:\n\n{error_msg[:1000]}"
 
 	def _create_mock_pdf(self, tex_file: Path) -> Tuple[bool, Optional[str]]:
 		"""Create a mock PDF for development when compilation fails"""

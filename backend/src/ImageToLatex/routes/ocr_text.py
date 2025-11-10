@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File
 import logging
-from ..services.imageTolatex_services import ocr_service, gemini_service
+from ..services import ocr_service, gemini_service
 from ..services.latex_reconstruct import wrap_latex
 from ..schemas.imageTolatex_schemas import OCRResponse
 
@@ -36,30 +36,74 @@ async def ocr_text(image: UploadFile = File(...)):
         if improvement_result["success"]:
             improved_text = improvement_result["data"]["content"].strip()
             latex_code = wrap_latex(improved_text)
-            return OCRResponse(
-                success=True,
-                error=None,
-                data={
-                    "text": improved_text,
+            
+            # Send the generated LaTeX code to Gemini for refinement
+            refinement_result = await gemini_service.fix_latex(latex_code)
+            
+            if refinement_result["success"]:
+                refined_latex = refinement_result["data"]["content"].strip()
+                return OCRResponse(
+                    success=True,
+                    error=None,
+                    data={
+                        "text": improved_text,
+                        "latex_code": refined_latex,
+                        "original_text": original_text,
+                        "original_latex": latex_code,
+                        "improved": True,
+                        "refined": True
+                    }
+                )
+            else:
+                # Return non-refined LaTeX if refinement fails
+                return OCRResponse(
+                    success=True,
+                    error=None,
+                    data={
+                        "text": improved_text,
                         "latex_code": latex_code,
-                    "original_text": original_text,
-                    "improved": True
-                }
-            )
+                        "original_text": original_text,
+                        "improved": True,
+                        "refined": False,
+                        "refinement_error": refinement_result["error"]
+                    }
+                )
         else:
             latex_code = wrap_latex(original_text)
-            # Return original text with note about improvement failure
-            return OCRResponse(
-                success=True,
-                error=None,
-                data={
-                    "text": original_text,
+            
+            # Even with original text, try to refine the LaTeX
+            refinement_result = await gemini_service.fix_latex(latex_code)
+            
+            if refinement_result["success"]:
+                refined_latex = refinement_result["data"]["content"].strip()
+                return OCRResponse(
+                    success=True,
+                    error=None,
+                    data={
+                        "text": original_text,
+                        "latex_code": refined_latex,
+                        "original_text": original_text,
+                        "original_latex": latex_code,
+                        "improved": False,
+                        "refined": True,
+                        "improvement_error": improvement_result["error"]
+                    }
+                )
+            else:
+                # Return original text with note about improvement failure
+                return OCRResponse(
+                    success=True,
+                    error=None,
+                    data={
+                        "text": original_text,
                         "latex_code": latex_code,
-                    "original_text": original_text,
-                    "improved": False,
-                    "improvement_error": improvement_result["error"]
-                }
-            )
+                        "original_text": original_text,
+                        "improved": False,
+                        "refined": False,
+                        "improvement_error": improvement_result["error"],
+                        "refinement_error": refinement_result["error"]
+                    }
+                )
         
     except Exception as e:
         logger.error(f"OCR error: {str(e)}")
