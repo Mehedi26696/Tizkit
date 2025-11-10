@@ -1,0 +1,1 @@
+// Protected layout with AuthGuard
