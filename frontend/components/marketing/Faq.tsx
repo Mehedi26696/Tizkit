@@ -63,7 +63,7 @@ export default function Faq1() {
       <div className="container mx-auto max-w-6xl px-4 md:px-6">
         <div className="mb-10 text-center">
           <motion.h2
-            className="mb-1 text-3xl font-bold tracking-tight md:text-4xl"
+            className="mb-1 text-5xl font-normal tracking-tight md:text-5xl"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -74,7 +74,7 @@ export default function Faq1() {
             </span>
           </motion.h2>
           <motion.h2
-            className="mb-4 text-3xl font-bold tracking-tight md:text-4xl"
+            className="mb-4 text-5xl font-normal tracking-tight md:text-5xl"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -97,7 +97,7 @@ export default function Faq1() {
           <Accordion
             type="single"
             collapsible
-            className="border-border/40 bg-card/30 w-full rounded-xl border p-2 backdrop-blur-sm"
+            className=" bg-card/30 w-full rounded-xl border p-4 backdrop-blur-sm text-4xl border-orange-400"
             defaultValue="1"
           >
             {items.map((item, index) => (
@@ -112,14 +112,14 @@ export default function Faq1() {
                 <AccordionItem
                   value={item.id}
                   className={cn(
-                    'bg-card/50 my-1 overflow-hidden rounded-lg border-none px-2 shadow-sm transition-all',
-                    'data-[state=open]:bg-card/80 data-[state=open]:shadow-md',
+                    'border-orange-400 bg-card/50 my-3 overflow-hidden rounded-lg border py-1 px-2 shadow-md transition-all',
+                    'data-[state=open]:bg-card/80 data-[state=open]:shadow-md bg-orange-200/20',
                   )}
                 >
                   <AccordionPrimitive.Header className="flex">
                     <AccordionPrimitive.Trigger
                       className={cn(
-                        'group flex flex-1 items-center justify-between gap-4 py-4 text-left text-base font-medium',
+                        'ml-2 group flex flex-1 items-center justify-between gap-4 py-4 text-left text-md md:text-lg font-medium',
                         'hover:text-primary transition-all duration-300 outline-none',
                         'focus-visible:ring-primary/50 focus-visible:ring-2',
                         'data-[state=open]:text-primary',
@@ -138,12 +138,12 @@ export default function Faq1() {
                   </AccordionPrimitive.Header>
                   <AccordionContent
                     className={cn(
-                      'text-muted-foreground overflow-hidden pt-0 pb-4',
+                      'ml-2 text-muted-foreground overflow-hidden pt-0 pb-4 text-base md:text-lg',
                       'data-[state=open]:animate-accordion-down',
                       'data-[state=closed]:animate-accordion-up',
                     )}
                   >
-                    <div className="border-border/30 border-t pt-3">
+                    <div className="border-border/50 border-t pt-3">
                       {item.content}
                     </div>
                   </AccordionContent>

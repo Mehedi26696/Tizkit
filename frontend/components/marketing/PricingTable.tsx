@@ -24,10 +24,10 @@ const plans = [
       "Try Tikzit's core features",
       'AI-assisted LaTeX editing',
       'Live preview with cursor sync',
-      '🎟️ Daily credits reset every 24 hours',
+      'Daily credits reset every 24 hours',
       'Template library access',
       'PDF & PNG export',
-      '❌ No collaboration',
+      'No collaboration',
     ],
     description: 'Perfect for students and personal projects',
     buttonText: 'Get Started Free',
@@ -40,13 +40,13 @@ const plans = [
     yearlyPrice: '7',
     period: 'month',
     features: [
-      '♾️ Unlimited AI generations',
-      '♾️ Unlimited compiles',
+      'Unlimited AI generations',
+      'Unlimited compiles',
       'Priority rendering',
       'Advanced error console',
       'Version history & restore',
       'All export formats (PDF, SVG, PNG, TikZ)',
-      '✅ Live collaboration (coming soon)',
+      'Live collaboration (coming soon)',
       'Priority support',
     ],
     description: 'For power users and teams who need constant access',
@@ -60,7 +60,7 @@ const plans = [
     yearlyPrice: 'Custom',
     period: 'pricing',
     features: [
-      '♾️ Unlimited everything',
+      'Unlimited everything',
       'Shared workspace',
       'Project permissions & roles',
       'Team analytics dashboard',
@@ -129,33 +129,20 @@ export default function CongestedPricing() {
   };
 
   return (
-    <div className="container py-20">
-      <div className="mb-12 space-y-4 text-center">
-        <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
-          Plans & Pricing
-        </h2>
-        <p className="text-muted-foreground text-lg whitespace-pre-line">
-          Choose the plan that works for you\nFrom free daily credits to unlimited access for teams
-        </p>
-      </div>
+    <div className="w-full bg-gray-200 py-20 mx-auto flex items-center justify-center">
+      <div className="container font-[Helvetica]">
+        <div className="mb-12 space-y-4 text-center">
+          <h2 className="text-5xl font-normal tracking-tight sm:text-5xl">
+            Plans & <span className='text-orange-500'>Pricing</span>
+          </h2>
+          <p className="text-muted-foreground text-lg whitespace-pre-line">
+            Choose the plan that works for you
+          </p>
+        </div>
 
-      <div className="mb-10 flex justify-center">
-        <label className="relative inline-flex cursor-pointer items-center">
-          <Label>
-            <Switch
-              ref={switchRef as any}
-              checked={!isMonthly}
-              onCheckedChange={handleToggle}
-              className="relative"
-            />
-          </Label>
-        </label>
-        <span className="ml-2 font-semibold">
-          Annual billing <span className="text-orange-500">(Save 20%)</span>
-        </span>
-      </div>
+      
 
-      <div className="sm:2 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="sm:2 grid grid-cols-1 gap-4 md:grid-cols-3 max-w-5xl mx-auto">
         {plans.map((plan, index) => (
           <motion.div
             key={index}
@@ -163,7 +150,7 @@ export default function CongestedPricing() {
             whileInView={
               isDesktop
                 ? {
-                    y: plan.isPopular ? -20 : 0,
+                    y: plan.isPopular ? -5 : 0,
                     opacity: 1,
                     x: index === 2 ? -30 : index === 0 ? 30 : 0,
                     scale: index === 0 || index === 2 ? 0.94 : 1.0,
@@ -185,7 +172,7 @@ export default function CongestedPricing() {
               'flex flex-col',
               !plan.isPopular && 'mt-5',
               index === 0 || index === 2
-                ? 'z-0 translate-x-0 translate-y-0 -translate-z-[50px] rotate-y-[10deg] transform'
+                ? 'z-0 translate-x-0 translate-y-0 -translate-z-[150px] rotate-y-[10deg] transform'
                 : 'z-10',
               index === 0 && 'origin-right',
               index === 2 && 'origin-left',
@@ -193,8 +180,8 @@ export default function CongestedPricing() {
           >
             {plan.isPopular && (
               <div className="bg-orange-500 absolute top-0 right-0 flex items-center rounded-tr-xl rounded-bl-xl px-2 py-0.5">
-                <Star className="text-white h-4 w-4 fill-current" />
-                <span className="text-white ml-1 font-sans font-semibold">
+               
+                <span className="text-white ml-1 font-sans font-light">
                   Popular
                 </span>
               </div>
@@ -204,7 +191,7 @@ export default function CongestedPricing() {
                 {plan.name}
               </p>
               <div className="mt-6 flex items-center justify-center gap-x-2">
-                <span className="text-foreground text-5xl font-bold tracking-tight">
+                <span className="text-foreground text-5xl font-normal tracking-tight">
                   {plan.price === 'Custom' ? (
                     <span>Custom</span>
                   ) : (
@@ -260,7 +247,7 @@ export default function CongestedPricing() {
                   buttonVariants({
                     variant: 'outline',
                   }),
-                  'group relative w-full gap-2 overflow-hidden text-lg font-semibold tracking-tighter',
+                  'group relative w-full gap-2 overflow-hidden text-lg font-light tracking-tighter',
                   'hover:bg-orange-500 hover:text-white hover:ring-orange-500 transform-gpu ring-offset-current transition-all duration-300 ease-out hover:ring-2 hover:ring-offset-1',
                   plan.isPopular
                     ? 'bg-orange-500 text-white border-orange-500'
@@ -275,6 +262,7 @@ export default function CongestedPricing() {
             </div>
           </motion.div>
         ))}
+      </div>
       </div>
     </div>
   );

@@ -83,9 +83,65 @@ export function TestimonialCard({
 }
 const testimonials = [
   {
-    name: 'Dr. Sarah Chen',
-    role: 'Research Scientist at MIT',
-    img: 'https://randomuser.me/api/portraits/women/33.jpg',
+    name: 'H.M. Mehedi Hasan',
+    role: 'Full-Stack Developer',
+    img: 'https://avatars.githubusercontent.com/u/141162383?v=4',
+    description: (
+      <p>
+        Building Tikzit was an incredible journey combining my passion for LaTeX and web development.
+        <Highlight>
+          The AI-powered editor makes creating complex diagrams feel effortless.
+        </Highlight>{' '}
+        I&apos;m excited to see how it helps students and researchers worldwide.
+      </p>
+    ),
+  },
+  {
+    name: 'Abu Bakar Siddique',
+    role: 'Frontend Developer',
+    img: 'https://avatars.githubusercontent.com/u/140780598?v=4',
+    description: (
+      <p>
+        Designing the visual workspace was a challenge I loved tackling.
+        <Highlight>
+          The drag-and-drop interface makes TikZ accessible to everyone.
+        </Highlight>{' '}
+        Seeing users create beautiful diagrams in minutes is incredibly rewarding.
+      </p>
+    ),
+  },
+  {
+    name: 'Ahil Islam Aurnob',
+    role: 'Backend Developer',
+    img: 'https://avatars.githubusercontent.com/u/66911551?v=4',
+    description: (
+      <p>
+        Optimizing the cloud compilation engine was the most exciting part for me.
+        <Highlight>
+          Real-time LaTeX rendering with error detection feels like magic.
+        </Highlight>{' '}
+        The backend infrastructure scales beautifully for thousands of concurrent users.
+      </p>
+    ),
+  },
+  {
+    name: 'Farhan Bin Rabbani',
+    role: 'QA & Analytics',
+    img: 'https://avatars.githubusercontent.com/u/167717462?v=4',
+    description: (
+      <p>
+        Ensuring Tikzit works flawlessly across all scenarios was my mission.
+        <Highlight>
+          Our testing framework catches edge cases that would break most LaTeX editors.
+        </Highlight>{' '}
+        The analytics show users are 5x more productive than with traditional tools.
+      </p>
+    ),
+  },
+  {
+    name: 'Amio Rashid',
+    role: 'Research Scientist at Japan 🇯🇵',
+    img: 'https://avatars.githubusercontent.com/u/128881150?v=4',
     description: (
       <p>
         Tikzit has revolutionized how I create diagrams for my research papers.
@@ -195,8 +251,8 @@ const testimonials = [
     ),
   },
   {
-    name: 'David Martinez',
-    role: 'Conference Organizer & Editor',
+    name: 'David Park',
+    role: 'Algorithm Researcher',
     img: 'https://randomuser.me/api/portraits/men/92.jpg',
     description: (
       <p>
@@ -205,20 +261,6 @@ const testimonials = [
           Tikzit&apos;s template library ensures everyone follows our conference style.
         </Highlight>{' '}
         Submission quality has improved dramatically.
-      </p>
-    ),
-  },
-  {
-    name: 'Dr. Lisa Wong',
-    role: 'Bioinformatics Researcher',
-    img: 'https://randomuser.me/api/portraits/women/29.jpg',
-    description: (
-      <p>
-        Creating flow diagrams for biological processes is now enjoyable.
-        <Highlight>
-          The AI-powered editor suggests complete diagram structures as I type.
-        </Highlight>{' '}
-        It&apos;s like autocomplete for LaTeX visualization.
       </p>
     ),
   },
@@ -236,8 +278,8 @@ export default function Testimonials() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h2 className="text-foreground mb-4 text-center text-4xl leading-[1.2] font-bold tracking-tighter md:text-5xl">
-          What Our Users Are Saying
+        <h2 className=" font-helvetica text-foreground mb-4 text-center text-4xl leading-[1.2] font-normal tracking-tighter md:text-5xl">
+          What <span className="text-orange-500">Our Users </span>Are Saying
         </h2>
         <h3 className="text-muted-foreground mx-auto mb-8 max-w-lg text-center text-lg font-medium tracking-tight text-balance">
           Don&apos;t just take our word for it. Here&apos;s what{' '}

@@ -11,7 +11,7 @@ import Navbar from '../common/Navbar';
 
 export default function GradientHero() {
   return (
-    <div className="bg-black relative w-full overflow-hidden">
+    <div className=" relative w-full overflow-hidden">
       {/* Background gradient */}
       <div className="absolute inset-0 z-0">
         <div className="from-orange-100/40 via-white to-white absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))]"></div>
@@ -49,7 +49,7 @@ export default function GradientHero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="from-orange-600/90 via-gray-200/90 to-gray-100/80 bg-gradient-to-tl bg-clip-text text-center text-4xl tracking-tighter text-balance text-transparent sm:text-5xl md:text-6xl lg:text-7xl"
+            className="from-orange-600/90 via-gray-800/90 to-gray-700/80 bg-gradient-to-tl bg-clip-text text-center text-4xl tracking-tighter text-balance text-transparent sm:text-5xl md:text-6xl lg:text-7xl"
           >
             Create LaTeX the way you think
           </motion.h1>

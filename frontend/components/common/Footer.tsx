@@ -72,7 +72,7 @@ export default function FooterStandard() {
           <div className="space-y-6 lg:col-span-2">
             <Link href="/" className="inline-flex items-center gap-3">
               
-              <span className="text-xl font-semibold"><Image src="/images/Logo.png" alt="Tikzit Logo" width={132} height={132} /></span>
+              <span className="text-xl font-semibold"><Image src="/images/Log.png" alt="Tikzit Logo" width={132} height={132} /></span>
             </Link>
             <p className="text-muted-foreground max-w-md">
               Create LaTeX the way you think. Turn ideas into elegant diagrams, tables, and papers—without the friction.
