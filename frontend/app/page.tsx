@@ -9,7 +9,7 @@ import CongestedPricing from "@/components/marketing/PricingTable";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black flex-col">
+    <div className="flex min-h-screen items-center justify-center font-sans dark:bg-black flex-col bg-orange-950 ">
       <Hero/>
       <Services/>
       <Features/>
