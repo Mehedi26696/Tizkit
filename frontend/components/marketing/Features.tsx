@@ -135,14 +135,14 @@ export const SkeletonOne = () => {
     <div className="relative flex py-8 px-2 gap-10 h-full">
       <div className="w-full p-5 mx-auto bg-white dark:bg-neutral-900 shadow-2xl group h-full">
         <div className="flex flex-1 w-full h-full flex-col space-y-2">
-          {/* TODO: replace with your own showcase image */}
-          <img
-            src="/linear.webp"
-            alt="AI editor walkthrough"
-            width={800}
-            height={800}
-            className="h-full w-full aspect-square object-cover object-left-top rounded-sm"
-          />
+          {/* Placeholder for AI editor showcase */}
+          <div className="h-full w-full aspect-square bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/20 dark:to-amber-900/20 rounded-sm flex items-center justify-center">
+            <div className="text-center p-8">
+              <div className="text-6xl mb-4">✨</div>
+              <p className="text-orange-600 dark:text-orange-400 font-semibold">AI-Powered LaTeX</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Generate clean diagrams & tables</p>
+            </div>
+          </div>
         </div>
       </div>
 
