@@ -12,7 +12,7 @@ Usage:
 
 from .gemini_service import GeminiService
 from .ocr_service import OCRService
-from .pix2tex_service import Pix2TexService
+from .imageTolatex_services import Pix2TexService
 
 # Global service instances for easy import
 gemini_service = GeminiService()
