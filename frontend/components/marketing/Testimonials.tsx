@@ -15,7 +15,7 @@ export function Highlight({
   return (
     <span
       className={cn(
-        'bg-orange-500/10 p-1 py-0.5 font-bold text-orange-500',
+        'bg-[#FA5F55]/10 p-1 py-0.5 font-bold text-[#FA5F55]',
         className,
       )}
     >
@@ -44,38 +44,38 @@ export function TestimonialCard({
   return (
     <div
       className={cn(
-        'mb-4 flex w-full cursor-pointer break-inside-avoid flex-col items-center justify-between gap-6 rounded-xl p-4',
+        'mb-4 flex w-full cursor-pointer break-inside-avoid flex-col items-center justify-between gap-6 rounded-2xl p-5 sm:p-6',
         // theme styles
-        'border-border bg-card/50 border shadow-sm',
+        'border border-[#FA5F55]/20 bg-[#f9f4eb] dark:bg-card/50 shadow-sm backdrop-blur-sm',
         // hover effect
-        'transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md',
+        'transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#FA5F55]/40',
         className,
       )}
       {...props}
     >
-      <div className="text-muted-foreground text-sm font-normal select-none">
+      <div className="text-muted-foreground text-sm sm:text-base font-normal select-none leading-relaxed">
         {description}
-        <div className="flex flex-row py-1">
-          <Star className="size-4 fill-orange-500 text-orange-500" />
-          <Star className="size-4 fill-orange-500 text-orange-500" />
-          <Star className="size-4 fill-orange-500 text-orange-500" />
-          <Star className="size-4 fill-orange-500 text-orange-500" />
-          <Star className="size-4 fill-orange-500 text-orange-500" />
+        <div className="flex flex-row gap-1 py-2 mt-1">
+          <Star className="size-4 fill-[#FA5F55] text-[#FA5F55]" />
+          <Star className="size-4 fill-[#FA5F55] text-[#FA5F55]" />
+          <Star className="size-4 fill-[#FA5F55] text-[#FA5F55]" />
+          <Star className="size-4 fill-[#FA5F55] text-[#FA5F55]" />
+          <Star className="size-4 fill-[#FA5F55] text-[#FA5F55]" />
         </div>
       </div>
 
-      <div className="flex w-full items-center justify-start gap-5 select-none">
+      <div className="flex w-full items-center justify-start gap-4 select-none">
         <img
           width={40}
           height={40}
           src={img || ''}
           alt={name}
-          className="size-10 rounded-full ring-1 ring-orange-500/20 ring-offset-2"
+          className="size-10 sm:size-12 rounded-full ring-2 ring-[#FA5F55]/30 ring-offset-2"
         />
 
         <div>
-          <p className="text-foreground font-medium">{name}</p>
-          <p className="text-muted-foreground text-xs font-normal">{role}</p>
+          <p className="text-foreground font-semibold text-sm sm:text-base">{name}</p>
+          <p className="text-muted-foreground text-xs sm:text-sm font-normal">{role}</p>
         </div>
       </div>
     </div>
@@ -268,31 +268,56 @@ const testimonials = [
 
 export default function Testimonials() {
   return (
-    <section className="relative container py-10">
-      {/* Decorative elements */}
-      <div className="absolute top-20 -left-20 z-10 h-64 w-64 rounded-full bg-orange-500/5 blur-3xl" />
-      <div className="absolute -right-20 bottom-20 z-10 h-64 w-64 rounded-full bg-orange-500/5 blur-3xl" />
+    <section className="relative container py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden">
+      {/* Decorative gradient blobs */}
+      <motion.div 
+        className="bg-[#FA5F55]/10 absolute top-20 -left-20 -z-10 h-48 w-48 sm:h-60 sm:w-60 md:h-72 md:w-72 rounded-full blur-3xl"
+        animate={{ 
+          scale: [1, 1.2, 1],
+          opacity: [0.3, 0.5, 0.3],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+      <motion.div 
+        className="bg-[#FA5F55]/10 absolute -right-20 bottom-20 -z-10 h-48 w-48 sm:h-60 sm:w-60 md:h-72 md:w-72 rounded-full blur-3xl"
+        animate={{ 
+          scale: [1.2, 1, 1.2],
+          opacity: [0.5, 0.3, 0.5],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 4
+        }}
+      />
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6 }}
+        className="mb-8 sm:mb-12 md:mb-16"
       >
-        <h2 className=" font-helvetica text-foreground mb-4 text-center text-4xl leading-[1.2] font-normal tracking-tighter md:text-5xl">
-          What <span className="text-orange-500">Our Users </span>Are Saying
+        <h2 className="font-helvetica text-foreground mb-3 sm:mb-4 text-center text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-[1.2] font-normal tracking-tight">
+          What <span className="text-[#FA5F55]">Our Users </span>Are Saying
         </h2>
-        <h3 className="text-muted-foreground mx-auto mb-8 max-w-lg text-center text-lg font-medium tracking-tight text-balance">
+        <h3 className="text-muted-foreground mx-auto mb-4 max-w-2xl text-center text-base sm:text-lg md:text-xl font-normal tracking-tight text-balance px-4">
           Don&apos;t just take our word for it. Here&apos;s what{' '}
-          <span className="bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
+          <span className="from-primary bg-gradient-to-r to-[#FA5F55] bg-clip-text text-transparent font-medium">
             researchers and academics
           </span>{' '}
           are saying about{' '}
-          <span className="font-semibold text-orange-500">Tikzit</span>
+          <span className="font-semibold text-[#FA5F55]">Tikzit</span>
         </h3>
       </motion.div>
 
       <div className="relative mt-6 max-h-screen overflow-hidden">
-        <div className="gap-4 md:columns-2 xl:columns-3 2xl:columns-4">
+        <div className="gap-4 md:columns-2 xl:columns-3 2xl:columns-3">
           {Array(Math.ceil(testimonials.length / 3))
             .fill(0)
             .map((_, i) => (
@@ -322,8 +347,8 @@ export default function Testimonials() {
               </Marquee>
             ))}
         </div>
-        <div className="from-background pointer-events-none absolute inset-x-0 bottom-0 h-1/4 w-full bg-gradient-to-t from-20%"></div>
-        <div className="from-background pointer-events-none absolute inset-x-0 top-0 h-1/4 w-full bg-gradient-to-b from-20%"></div>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 w-full bg-gradient-to-t from-[#fffaf5] dark:from-background from-20%"></div>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1/3 w-full bg-gradient-to-b from-[#fffaf5] dark:from-background from-20%"></div>
       </div>
     </section>
   );
