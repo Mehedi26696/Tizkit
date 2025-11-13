@@ -68,7 +68,7 @@ export function Features() {
   ];
 
   return (
-    <div className="relative py-10 lg:py-40 max-w-7xl mx-auto">
+    <div className="py-10 lg:py-40 mx-auto bg-[#f5f3ef]">
       <div className="px-8">
         <h4 className="text-3xl lg:text-5xl lg:leading-tight max-w-5xl mx-auto text-center tracking-tight font-medium text-black dark:text-white">
           The smarter way to work with LaTeX
@@ -132,8 +132,8 @@ const FeatureDescription = ({ children }: { children?: React.ReactNode }) => {
 
 export const SkeletonOne = () => {
   return (
-    <div className="relative flex py-8 px-2 gap-10 h-full">
-      <div className="w-full p-5 mx-auto bg-white dark:bg-neutral-900 shadow-2xl group h-full">
+    <div className="flex py-8 px-2 gap-10 bg-black">
+      <div className="w-full p-5 mx-auto shadow-2xl group h-full">
         <div className="flex flex-1 w-full h-full flex-col space-y-2">
           {/* Placeholder for AI editor showcase */}
           <div className="h-full w-full aspect-square bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/20 dark:to-amber-900/20 rounded-sm flex items-center justify-center">

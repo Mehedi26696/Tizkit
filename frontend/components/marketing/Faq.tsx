@@ -8,6 +8,7 @@ import {
   AccordionContent,
   AccordionItem,
 } from '@/components/ui/accordion';
+import Image from 'next/image';
 
 const items = [
   {
@@ -45,59 +46,91 @@ const items = [
 const fadeInAnimationVariants = {
   initial: {
     opacity: 0,
-    y: 10,
+    y: 30,
+    scale: 0.95,
   },
   animate: (index: number) => ({
     opacity: 1,
     y: 0,
-    transition: {
-      delay: 0.05 * index,
-      duration: 0.4,
-    },
+    scale: 1,
   }),
+};
+
+const headerVariants = {
+  initial: { opacity: 0, y: -20 },
+  animate: { 
+    opacity: 1, 
+    y: 0,
+  },
 };
 
 export default function Faq1() {
   return (
-    <section className="py-12 md:py-16">
-      <div className="container mx-auto max-w-6xl px-4 md:px-6">
-        <div className="mb-10 text-center">
+    <section className="py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden">
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+        <motion.div 
+          className="mb-8 sm:mb-10 md:mb-12 text-center"
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, margin: "-100px" }}
+        >
           <motion.h2
-            className="mb-1 text-5xl font-normal tracking-tight md:text-5xl"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            variants={headerVariants}
+            className="mb-1 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-normal tracking-tight"
           >
             Questions?{' '}
-            <span className="from-primary bg-gradient-to-r to-orange-400 bg-clip-text text-transparent">
+            <span className="from-primary bg-gradient-to-r to-[#FA5F55] bg-clip-text text-transparent">
               We've
             </span>
           </motion.h2>
           <motion.h2
-            className="mb-4 text-5xl font-normal tracking-tight md:text-5xl"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            variants={headerVariants}
+            transition={{ delay: 0.2 }}
+            className="mb-4 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-normal tracking-tight"
           >
-            got <span className='text-orange-400'>Answers</span>
+            got <span className='text-[#FA5F55]'>Answers</span>
           
           </motion.h2>
-        </div>
+        </motion.div>
 
         <motion.div
-          className="relative mx-auto max-w-3xl"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          className="relative mx-auto max-w-4xl px-2 sm:px-4 md:px-6"
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
         >
           {/* Decorative gradient */}
-          <div className="bg-primary/10 absolute -top-4 -left-4 -z-10 h-72 w-72 rounded-full blur-3xl" />
-          <div className="bg-primary/10 absolute -right-4 -bottom-4 -z-10 h-72 w-72 rounded-full blur-3xl" />
+          <motion.div 
+            className="bg-[#FA5F55]/10 absolute -top-4 -left-4 -z-10 h-48 w-48 sm:h-60 sm:w-60 md:h-72 md:w-72 rounded-full blur-3xl"
+            animate={{ 
+              scale: [1, 1.2, 1],
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.div 
+            className="bg-[#FA5F55]/10 absolute -right-4 -bottom-4 -z-10 h-48 w-48 sm:h-60 sm:w-60 md:h-72 md:w-72 rounded-full blur-3xl"
+            animate={{ 
+              scale: [1.2, 1, 1.2],
+              opacity: [0.5, 0.3, 0.5],
+            }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 4
+            }}
+          />
 
           <Accordion
             type="single"
             collapsible
-            className=" bg-card/30 w-full rounded-xl border p-4 backdrop-blur-sm text-4xl border-orange-400"
+            className="w-full rounded-xl border p-3 sm:p-4 md:p-6 backdrop-blur-sm border-[#FA5F55]"
             defaultValue="1"
           >
             {items.map((item, index) => (
@@ -112,25 +145,26 @@ export default function Faq1() {
                 <AccordionItem
                   value={item.id}
                   className={cn(
-                    'border-orange-400 bg-card/50 my-3 overflow-hidden rounded-lg border py-1 px-2 shadow-md transition-all',
-                    'data-[state=open]:bg-card/80 data-[state=open]:shadow-md bg-orange-200/20',
+                    'border-[#FA5F55]/60 my-2 overflow-hidden rounded-lg border py-2 sm:py-3 px-2 sm:px-3 shadow-md transition-all border-b-2 border-b-[#FA5F55]/40 bg-[#f9f4eb]',
+                    'data-[state=open]:bg-[#f9f4eb]/60 data-[state=open]:shadow-lg data-[state=open]:scale-[1.02]',
+                    'hover:shadow-lg hover:scale-[1.01]',
                   )}
                 >
                   <AccordionPrimitive.Header className="flex">
                     <AccordionPrimitive.Trigger
                       className={cn(
-                        'ml-2 group flex flex-1 items-center justify-between gap-4 py-4 text-left text-md md:text-lg font-medium',
+                        'ml-1 sm:ml-2 group flex flex-1 items-center justify-between gap-2 sm:gap-4 py-3 sm:py-4 text-left text-sm sm:text-base md:text-lg font-medium',
                         'hover:text-primary transition-all duration-300 outline-none',
                         'focus-visible:ring-primary/50 focus-visible:ring-2',
                         'data-[state=open]:text-primary',
                       )}
                     >
-                      {item.title}
+                      <span className="hover:border-b-2 hover:border-b-[#FA5F55]/40 cursor-pointer transition-all duration-300">{item.title}</span>
                       <PlusIcon
                         size={18}
                         className={cn(
-                          'text-primary/70 shrink-0 transition-transform duration-300 ease-out',
-                          'group-data-[state=open]:rotate-45',
+                          'text-[#1f1e24] shrink-0 transition-all duration-500 ease-out',
+                          'group-data-[state=open]:rotate-45 group-data-[state=open]:text-[#FA5F55]',
                         )}
                         aria-hidden="true"
                       />
@@ -138,20 +172,26 @@ export default function Faq1() {
                   </AccordionPrimitive.Header>
                   <AccordionContent
                     className={cn(
-                      'ml-2 text-muted-foreground overflow-hidden pt-0 pb-4 text-base md:text-lg',
+                      'ml-1 sm:ml-2 text-[#1f1e24] overflow-hidden pt-0 pb-3 sm:pb-4 text-sm sm:text-base md:text-lg',
                       'data-[state=open]:animate-accordion-down',
                       'data-[state=closed]:animate-accordion-up',
                     )}
                   >
-                    <div className="border-border/50 border-t pt-3">
+                    <motion.div 
+                      className="border-[#1f1e24]/30 border-t pt-3"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                    >
                       {item.content}
-                    </div>
+                    </motion.div>
                   </AccordionContent>
                 </AccordionItem>
               </motion.div>
             ))}
           </Accordion>
         </motion.div>
+        
       </div>
     </section>
   );
