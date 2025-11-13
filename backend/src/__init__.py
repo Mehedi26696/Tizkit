@@ -82,6 +82,13 @@ try:
 except Exception:
     logger.exception("Failed to include auth router")
 
+# Credits routes
+try:
+    from src.auth.routes.credits_routes import credits_router as _credits_router
+    app.include_router(_credits_router, prefix="/credits", tags=["credits"])
+except Exception:
+    logger.exception("Failed to import/include credits router")
+
 
 # Diagram routes
 try:

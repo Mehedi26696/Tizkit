@@ -1,19 +1,34 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Depends
+from sqlmodel import Session
 import logging
 from ..services import ocr_service, gemini_service
 from ..services.latex_reconstruct import wrap_latex
 from ..schemas.imageTolatex_schemas import OCRResponse
+from ...auth.middleware.credits_middleware import create_credit_checker
+from ...auth.models.credits import ServiceType
+
+from ...auth.routes import get_current_user, User
+from ...utils.database import get_session
 
 logger = logging.getLogger(__name__)
 
 ocr_router = APIRouter()
 
 @ocr_router.post("/ocr-text", response_model=OCRResponse)
-async def ocr_text(image: UploadFile = File(...)):
+async def ocr_text(
+    image: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    credit_check: dict = Depends(create_credit_checker(ServiceType.OCR_TEXT_EXTRACTION))
+):
     """
     Extract text from image using OCR.space API
     """
     try:
+        # Extract credit service and user info from dependency
+        credits_service = credit_check["credits_service"]
+        user_id = credit_check["user_id"]
+        
         image_content = await image.read()
         
         # Extract text using OCR
@@ -42,6 +57,14 @@ async def ocr_text(image: UploadFile = File(...)):
             
             if refinement_result["success"]:
                 refined_latex = refinement_result["data"]["content"].strip()
+                
+                # Consume credits for successful processing
+                await credits_service.consume_credits(
+                    user_id, 
+                    ServiceType.OCR_TEXT_EXTRACTION,
+                    {"filename": image.filename, "improved": True, "refined": True}
+                )
+                
                 return OCRResponse(
                     success=True,
                     error=None,
@@ -56,6 +79,13 @@ async def ocr_text(image: UploadFile = File(...)):
                 )
             else:
                 # Return non-refined LaTeX if refinement fails
+                # Consume credits for successful processing (even without refinement)
+                await credits_service.consume_credits(
+                    user_id, 
+                    ServiceType.OCR_TEXT_EXTRACTION,
+                    {"filename": image.filename, "improved": True, "refined": False}
+                )
+                
                 return OCRResponse(
                     success=True,
                     error=None,
@@ -76,6 +106,14 @@ async def ocr_text(image: UploadFile = File(...)):
             
             if refinement_result["success"]:
                 refined_latex = refinement_result["data"]["content"].strip()
+                
+                # Consume credits for successful processing
+                await credits_service.consume_credits(
+                    user_id, 
+                    ServiceType.OCR_TEXT_EXTRACTION,
+                    {"filename": image.filename, "improved": False, "refined": True}
+                )
+                
                 return OCRResponse(
                     success=True,
                     error=None,
@@ -91,6 +129,13 @@ async def ocr_text(image: UploadFile = File(...)):
                 )
             else:
                 # Return original text with note about improvement failure
+                # Consume credits for basic OCR processing
+                await credits_service.consume_credits(
+                    user_id, 
+                    ServiceType.OCR_TEXT_EXTRACTION,
+                    {"filename": image.filename, "improved": False, "refined": False}
+                )
+                
                 return OCRResponse(
                     success=True,
                     error=None,
