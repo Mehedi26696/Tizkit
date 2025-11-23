@@ -2,6 +2,7 @@
 import React from 'react'
 import { Button } from '../ui/button'
 import Image from 'next/image'
+import Link from 'next/link'
 
 const Navbar = () => {
   return (
@@ -30,12 +31,12 @@ const Navbar = () => {
       </div>
 
       <div className='flex gap-4'>
-        <Button className='border-1 border-[#FA5F55]/30 rounded-full px-6 py-4 bg-transparent text-gray-900 font-normal hover:bg-[#FA5F55] hover:text-white cursor-pointer transition-all duration-300'>
+        <Link href="/login" className='border-1 border-[#FA5F55]/30 rounded-full px-6 py-4 bg-transparent text-gray-900 font-normal hover:bg-[#FA5F55] hover:text-white cursor-pointer transition-all duration-300'>
             Login
-        </Button>
-        <Button className='border-1 border-[#FA5F55] rounded-full px-6 py-4 bg-[#1f1e24] text-white font-normal hover:bg-[#FA5F55]/90 cursor-pointer transition-all duration-300'>
+        </Link>
+        <Link href="/register" className='border-1 border-[#FA5F55] rounded-full px-6 py-4 bg-[#1f1e24] text-white font-normal hover:bg-[#FA5F55]/90 cursor-pointer transition-all duration-300'>
             SignUp
-        </Button>
+        </Link>
       </div>
     </div>
   )
