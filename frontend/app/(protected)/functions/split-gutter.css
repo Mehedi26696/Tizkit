@@ -1,0 +1,29 @@
+/* Custom gutter style for react-split */
+.gutter {
+  background: #e0e7ef;
+  position: relative;
+  z-index: 10;
+  transition: background 0.2s;
+}
+.gutter:hover {
+  background: #b6c2e1;
+  cursor: col-resize;
+}
+.gutter.gutter-horizontal {
+  width: 8px;
+  min-width: 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gutter.gutter-horizontal:after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 32px;
+  margin: auto;
+  background: #7b8bb2;
+  border-radius: 2px;
+  opacity: 0.5;
+}
