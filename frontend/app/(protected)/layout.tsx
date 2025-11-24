@@ -1,4 +1,12 @@
-// Protected layout with AuthGuard
-export default function Layout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+// app/(protected)/dashboard/layout.tsx
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="w-full min-h-screen bg-gray-50 p-6">
+      {children}
+    </div>
+  );
 }
