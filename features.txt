@@ -1,0 +1,43 @@
+Table Editor
+
+Design stunning data tables with our intuitive visual interface. Customize styling, formatting, and export to perfect LaTeX code instantly.
+Visual EditorLaTeX ExportResponsive
+Diagram Editor
+
+Create professional TikZ diagrams, flowcharts, and technical illustrations with drag-and-drop simplicity. Export clean, publication-ready LaTeX.
+TikZ PoweredFlowchartsDiagrams
+Image to LaTeX
+
+Upload images containing equations or text. Our AI-powered OCR and formula recognition instantly converts them to editable LaTeX code.
+AI OCRGemini EnhancedAccurate
+Handwritten Flowchart
+
+Upload handwritten flowcharts and let Gemini Flash 2.0 analyze and convert them to professional TikZ LaTeX diagrams automatically.
+Gemini Flash 2.0AI AnalysisTikZ Export
+
+
+feature
+Real-time Preview
+
+See your changes instantly compiled
+Precision Control
+
+Fine-tune every element with ease
+No Setup Required
+
+Works directly in your browser
+Responsive Design
+
+Works perfectly on any device
+Rich Formatting
+
+Colors, fonts, styles and more
+Copy & Export
+
+Use your code anywhere, anytime
+AI-Powered
+
+Smart error correction & suggestions
+Cloud Ready
+
+Save and sync across devices
