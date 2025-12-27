@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import '@/app/(protected)/functions/split-gutter.css';
 import LatexCodeSection from '@/app/(protected)/functions/LatexCodeSection';
@@ -27,6 +29,8 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
   const [isCompiling, setIsCompiling] = React.useState(false);
   const [editorData, setEditorData] = React.useState<any>(null);
   const [autoUpdate, setAutoUpdate] = React.useState(true);
+  const [projectName, setProjectName] = React.useState<string>('Untitled Project');
+  const [isEditingName, setIsEditingName] = React.useState(false);
 
   // Save project data to localStorage
   React.useEffect(() => {
@@ -140,15 +144,15 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
   };
 
   return (
-    <div className="min-h-screen bg-[#f9f4eb]">
+    <div className="h-screen bg-[#f9f4eb]/50 fixed inset-0 overflow-hidden">
       {/* Header */}
       <motion.header 
-        className="bg-white border-b-2 border-[#FA5F55]/40 sticky top-0 z-40 shadow-sm"
+        className="bg-[#f9f4eb]/50 border-b-2 border-[#FA5F55]/40 z-40 shadow-sm"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="max-w-full mx-auto px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+        <div className="max-w-full">
+          <div className="flex justify-between items-center h-16 px-4">
             <div className="flex items-center space-x-4">
               <motion.button
                 onClick={onNavigateToHome}
@@ -159,17 +163,34 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
                 <ArrowLeft className="w-5 h-5 text-[#1f1e24]" />
               </motion.button>
               <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#FA5F55] to-[#FA5F55]/70 rounded-lg flex items-center justify-center shadow-md">
-                    <span className="text-white font-bold text-lg">T</span>
-                  </div>
-                </div>
                 <div>
-                  <h1 className="text-xl font-bold text-[#1f1e24]">
-                    Tizkit
-                  </h1>
+                  {isEditingName ? (
+                    <input
+                      type="text"
+                      value={projectName}
+                      onChange={(e) => setProjectName(e.target.value)}
+                      onBlur={() => setIsEditingName(false)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') setIsEditingName(false);
+                        if (e.key === 'Escape') {
+                          setProjectName(projectName);
+                          setIsEditingName(false);
+                        }
+                      }}
+                      autoFocus
+                      className="text-xl font-bold text-[#1f1e24] bg-white border-2 border-[#FA5F55] rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#FA5F55]/20"
+                    />
+                  ) : (
+                    <h1 
+                      className="text-xl font-bold text-[#1f1e24] cursor-pointer hover:text-[#FA5F55] transition-colors"
+                      onClick={() => setIsEditingName(true)}
+                      title="Click to edit project name"
+                    >
+                      {projectName}
+                    </h1>
+                  )}
                   <p className="text-xs text-[#1f1e24]/60">
-                    {projectId ? `Project: ${projectId}` : 'Visual LaTeX Editor'}
+                    {projectId ? `ID: ${projectId}` : 'Visual LaTeX Editor'}
                   </p>
                 </div>
               </div>
@@ -222,15 +243,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
       >
         {/* Left Sidebar - Editor Selection */}
         <div className="w-full max-w-[320px] bg-white border-r-2 border-[#FA5F55]/40 flex flex-col">
-          <div className="p-6 border-b-2 border-[#FA5F55]/40 bg-gradient-to-br from-[#f9f4eb]/50 to-white">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-[#FA5F55] rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold text-[#1f1e24]">Editors</h3>
-            </div>
+          <div className="border-b-2 border-[#FA5F55]/40 bg-gradient-to-br from-[#f9f4eb]/50 to-white p-6">
             <div className="space-y-3">
               {/* Table Editor Button */}
               <motion.button
@@ -359,7 +372,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
           </div>
 
           {/* Status Section */}
-          <div className="p-6 border-t-2 border-[#FA5F55]/40 mt-auto bg-gradient-to-br from-white to-[#f9f4eb]/50">
+          <div className="border-t-2 border-[#FA5F55]/40 mt-auto bg-gradient-to-br from-white p-6  to-[#f9f4eb]/50">
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#1f1e24]/70">Active Editor</span>
@@ -422,7 +435,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
               </div>
             </div>
           </div>
-          <div className="flex-1 overflow-auto p-6 bg-[#f9f4eb]/30">
+          <div className="p-6 flex-1 overflow-auto bg-[#f9f4eb]/30">
             <div className="transition-all duration-300">
               {activeTab === 'table' && (
                 <div className="animate-fade-in">
@@ -511,7 +524,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
               </div>
             </div>
           </div>
-          <div className="flex-1 overflow-auto p-6 bg-[#f9f4eb]/30">
+          <div className="flex-1 overflow-auto bg-[#f9f4eb]/30">
             {latexCode ? (
               <div className="animate-fade-in">
                 <LatexPreview latexCode={latexCode} type={activeTab === 'handwrittenFlowchart' ? 'diagram' : activeTab as 'table' | 'diagram' | 'imageToLatex'} />

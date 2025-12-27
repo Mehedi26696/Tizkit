@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { EditorPage } from './components/EditorPage';
 
@@ -6,5 +8,5 @@ interface PageProps {
 }
 
 export default function ProjectEditPage({ params }: PageProps) {
-	return <EditorPage projectId={params.projectId} onNavigateToHome={() => window.location.href = '/(protected)/dashboard'} />;
+	return <EditorPage projectId={params.projectId} onNavigateToHome={() => window.location.href = '/dashboard'} />;
 }
