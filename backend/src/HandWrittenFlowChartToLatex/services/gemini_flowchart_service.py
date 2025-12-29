@@ -3,191 +3,188 @@ import logging
 import base64
 from typing import Dict, Any, List
 from src.config import get_settings
+from src.ImageToLatex.services.ocr_service import OCRService
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
 class GeminiFlowchartService:
-    """Service for analyzing handwritten flowcharts using Gemini Flash 2.0"""
+    """Service for analyzing handwritten flowcharts using OCR + LLM (Gemini/Groq)"""
     
     def __init__(self):
-        self.api_key = settings.GEMINI_API_KEY or ""
-        self.base_url = settings.GEMINI_BASE_URL
-        self.model = "gemini-2.0-flash"  # Gemini Flash 2.0
+        # Gemini configuration
+        self.gemini_api_key = settings.GEMINI_API_KEY or ""
+        self.gemini_base_url = settings.GEMINI_BASE_URL
+        
+        # Groq configuration (fallback)
+        self.groq_api_key = settings.GROQ_API_KEY or ""
+        self.groq_base_url = settings.GROQ_BASE_URL
+        self.groq_model = settings.GROQ_MODEL
+        
+        # OCR service for text extraction
+        self.ocr_service = OCRService()
     
     async def analyze_handwritten_flowchart(self, image_bytes: bytes, filename: str = "flowchart.png") -> Dict[str, Any]:
         """
-        Analyze handwritten flowchart image using Gemini Flash 2.0 vision model.
-        Returns structured flowchart data with elements and connections.
+        Analyze handwritten flowchart image using OCR + LLM (Gemini with Groq fallback).
+        First extracts text via OCR, then uses LLM to understand structure.
         """
         try:
-            if not settings.is_gemini_configured():
-                return {
-                    "success": False,
-                    "error": "Gemini API key not configured or service disabled",
-                    "data": None
-                }
-
-            headers = {"Content-Type": "application/json"}
-            prompt = """
-You are an advanced AI specialist in analyzing handwritten flowcharts and diagrams. Your task is to perform comprehensive analysis of this handwritten flowchart image with high accuracy and attention to detail.
-
-## ANALYSIS OBJECTIVES:
-1. **Shape Recognition**: Identify all flowchart shapes with 99% accuracy ⚠️ ESPECIALLY DIAMONDS!
-2. **Text Extraction**: Extract ALL text content, including challenging handwriting
-3. **Flow Analysis**: Map logical connections and decision paths ⚠️ CRITICAL: Find ALL decision branches!
-4. **Conditional Logic Detection**: MANDATORY - Identify if this is a conditional flowchart with decision points
-5. **Spatial Positioning**: Determine accurate relative positions for layout
-6. **Semantic Understanding**: Understand the flowchart's purpose and logic
-
-🎯 **PRIMARY MISSION**: If you see ANY diamond shapes or conditional logic (if/else, yes/no paths), this MUST be classified as a conditional flowchart with proper decision_branches mapping!
-
-## SHAPE CLASSIFICATION GUIDE:
-- **OVAL/ELLIPSE** → start/end nodes (terminals)
-- **RECTANGLE/BOX** → process nodes (actions/operations)  
-- **DIAMOND/RHOMBUS** → decision nodes (conditional logic) ⚠️ CRITICAL: Look for ANY diamond/rhombus shape!
-- **CIRCLE** → connector nodes (join points)
-- **PARALLELOGRAM** → input/output nodes
-- **HEXAGON** → preparation nodes
-
-⚠️ **DECISION DETECTION PRIORITY**: Diamonds are the most important shapes! Even rough, hand-drawn diamond-like shapes should be classified as decision nodes. Look for:
-- Tilted squares (45° rotated rectangles)
-- Rough diamond outlines
-- Four-sided shapes that are wider than tall
-- Any shape that looks like it could be a decision point
-
-## TEXT EXTRACTION STRATEGIES:
-- Read handwritten text carefully, considering context
-- For unclear text, provide best interpretation with confidence
-- Handle common handwriting variations (a/o, n/m, etc.)
-- Extract programming symbols: ==, !=, %, &&, ||, etc.
-- Preserve mathematical operators and comparison signs
-- Maintain case sensitivity where apparent
-
-## POSITIONING ALGORITHM:
-- Use image coordinates (0,0 = top-left)
-- Estimate positions in 50-pixel increments
-- Consider visual layout: top-to-bottom, left-to-right flows
-- Account for decision branch positioning (left/right splits)
-- Maintain relative spatial relationships
-
-## CONNECTION MAPPING:
-⚠️ **DECISION BRANCH DETECTION IS CRITICAL**:
-- Follow arrow directions precisely
-- **MANDATORY**: Every decision diamond MUST have exactly 2 outgoing paths (Yes/No branches)
-- Identify Yes/No branches (typically Yes=left/top, No=right/bottom)
-- If you see a diamond with only 1 connection, look harder for the second branch!
-- Map convergence points where paths rejoin
-- Handle complex flows with multiple decision points
-
-**BRANCH IDENTIFICATION RULES**:
-- Left/Top branch → Usually "Yes" or "True"
-- Right/Bottom branch → Usually "No" or "False"
-- Look for handwritten "Y/N", "Yes/No", "T/F", or condition symbols near arrows
-- If no labels visible, infer from spatial layout (left=Yes, right=No)
-
-## ENHANCED JSON OUTPUT FORMAT:
-```json
-{
-  "elements": [
-    {
-      "id": "start_1",
-      "type": "start|process|decision|end|input|output|connector",
-      "text": "extracted text content",
-      "position": {"x": 250, "y": 50},
-      "shape": "oval|rectangle|diamond|circle|parallelogram|hexagon",
-      "connections_to": ["process_1", "decision_1"],
-      "confidence": 0.95,
-      "notes": "any interpretation details"
-    }
-  ],
-  "flow_direction": "top_to_bottom|left_to_right|mixed",
-  "complexity": "simple|moderate|complex",
-  "title": "detected title or null",
-  "description": "comprehensive flowchart purpose and logic",
-  "decision_branches": [
-    {
-      "decision_id": "decision_1",
-      "yes_path": ["process_2"],
-      "no_path": ["process_3"],
-      "condition": "extracted condition text"
-    }
-  ],
-  "analysis_metadata": {
-    "total_nodes": 6,
-    "decision_points": 1,
-    "start_nodes": 1,
-    "end_nodes": 1,
-    "estimated_accuracy": 0.92
-  }
-}
-```
-
-## QUALITY ASSURANCE CHECKLIST:
-✓ All visible shapes identified and classified
-✓ All text extracted with best-effort accuracy  
-✓ Logical flow paths mapped correctly
-✓ Decision branches clearly defined with conditions
-✓ Spatial positioning maintains visual relationships
-✓ JSON structure is valid and complete
-✓ Analysis reflects actual flowchart logic
-
-## SPECIAL HANDLING:
-- **Poor handwriting**: Provide best interpretation + confidence score
-- **Ambiguous shapes**: Use context clues and surrounding elements
-- **Missing arrows**: Infer logical connections from spatial layout
-- **Complex conditions**: Extract full conditional expressions
-- **Multiple paths**: Map all possible execution flows
-- **Nested logic**: Handle sub-processes and loops
-
-## EXAMPLE ANALYSIS:
-For a simple number checking flowchart:
-- START → "Begin Program"
-- PROCESS → "Input Number N" 
-- DECISION → "Is N % 2 == 0?" (MUST have 2 branches: Yes path and No path)
-- PROCESS_YES → "Display: Even Number" (connected from Yes branch)
-- PROCESS_NO → "Display: Odd Number" (connected from No branch)
-- END → "End Program"
-
-**DECISION BRANCHES MUST LOOK LIKE**:
-```json
-"decision_branches": [
-  {
-    "decision_id": "decision_1",
-    "yes_path": ["process_yes", "end_1"],
-    "no_path": ["process_no", "end_1"],
-    "condition": "Is N % 2 == 0?"
-  }
-]
-```
-
-⚠️ **VALIDATION RULES**:
-- Every decision node MUST appear in decision_branches array
-- Every decision MUST have both yes_path and no_path (even if one is empty)
-- If you don't see clear Yes/No labels, create logical branches based on spatial layout
-- PROCESS (Yes) → "Display 'Even'"
-- PROCESS (No) → "Display 'Odd'" 
-- END → "Stop"
-
-Analyze the provided flowchart image with this comprehensive approach and return the detailed JSON analysis."""
-
-            # Convert image to base64
-            image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+            # Step 1: Extract text from image using OCR
+            logger.info("FlowchartService: Step 1 - Extracting text via OCR")
             
+            # Detect content type
+            content_type = "image/png"
+            if image_bytes[:3] == b'\xff\xd8\xff':
+                content_type = "image/jpeg"
+            elif image_bytes[:4] == b'\x89PNG':
+                content_type = "image/png"
+            elif image_bytes[:6] in (b'GIF87a', b'GIF89a'):
+                content_type = "image/gif"
+            elif image_bytes[:4] == b'RIFF' and image_bytes[8:12] == b'WEBP':
+                content_type = "image/webp"
+            
+            ocr_result = await self.ocr_service.extract_text(image_bytes, filename, content_type)
+            
+            if not ocr_result.get("success") or not ocr_result.get("text"):
+                logger.warning("FlowchartService: OCR extraction failed, falling back to vision API")
+                # Fallback to vision API if OCR fails
+                return await self._analyze_with_vision(image_bytes, filename)
+            
+            ocr_text = ocr_result.get("text", "")
+            logger.info(f"FlowchartService: OCR extracted {len(ocr_text)} characters")
+            
+            # Step 2: Try Gemini first, then Groq as fallback
+            logger.info("FlowchartService: Step 2 - Analyzing structure with LLM")
+            
+            # Try Gemini first
+            if settings.is_gemini_configured():
+                logger.info("FlowchartService: Trying Gemini API...")
+                gemini_result = await self._analyze_with_gemini_text(ocr_text)
+                if gemini_result.get("success"):
+                    gemini_result["data"]["ocr_text"] = ocr_text
+                    return gemini_result
+                else:
+                    logger.warning(f"FlowchartService: Gemini failed: {gemini_result.get('error')}")
+            
+            # Fallback to Groq
+            if settings.is_groq_configured():
+                logger.info("FlowchartService: Falling back to Groq API...")
+                groq_result = await self._analyze_with_groq(ocr_text)
+                if groq_result.get("success"):
+                    groq_result["data"]["ocr_text"] = ocr_text
+                    return groq_result
+                else:
+                    logger.warning(f"FlowchartService: Groq failed: {groq_result.get('error')}")
+            
+            # If both failed, return error
+            return {
+                "success": False,
+                "error": "Both Gemini and Groq APIs failed or not configured",
+                "data": None
+            }
+                    
+        except Exception as e:
+            logger.error(f"Flowchart analysis error: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Flowchart analysis error: {str(e)}",
+                "data": None
+            }
+
+    def _get_flowchart_prompt(self, ocr_text: str) -> str:
+        """Generate the prompt for analyzing flowchart structure from OCR text"""
+        return f"""You are an expert flowchart analyzer. Based on the OCR-extracted text from a handwritten flowchart image, reconstruct the flowchart structure.
+
+**OCR EXTRACTED TEXT:**
+{ocr_text}
+
+**YOUR TASK:**
+Analyze the OCR text and identify:
+1. Start/End nodes (usually "Start", "End", "Begin", "Stop")
+2. Process nodes (action steps, operations)
+3. Decision nodes (questions, conditions with Yes/No or True/False)
+4. The flow/connections between nodes (indicated by arrow descriptions or logical sequence)
+
+**CRITICAL RULES:**
+1. DIAMONDS = Decision nodes (if/else, yes/no questions) - MUST have 2 branches
+2. RECTANGLES = Process nodes (actions, operations)
+3. OVALS/ROUNDED = Start/End terminals
+4. Infer connections from logical flow and any arrow indicators in the text
+
+**OUTPUT FORMAT (JSON only, no explanation):**
+```json
+{{
+  "elements": [
+    {{
+      "id": "start_1",
+      "type": "start",
+      "text": "Start",
+      "shape": "oval",
+      "position": {{"x": 200, "y": 50}},
+      "connections_to": ["process_1"]
+    }},
+    {{
+      "id": "process_1",
+      "type": "process",
+      "text": "Input N",
+      "shape": "rectangle",
+      "position": {{"x": 200, "y": 150}},
+      "connections_to": ["decision_1"]
+    }},
+    {{
+      "id": "decision_1",
+      "type": "decision",
+      "text": "N % 2 == 0?",
+      "shape": "diamond",
+      "position": {{"x": 200, "y": 250}},
+      "connections_to": ["process_yes", "process_no"]
+    }}
+  ],
+  "decision_branches": [
+    {{
+      "decision_id": "decision_1",
+      "condition": "N % 2 == 0?",
+      "yes_path": ["process_yes"],
+      "no_path": ["process_no"]
+    }}
+  ],
+  "flow_direction": "top_to_bottom",
+  "title": "Flowchart Title",
+  "description": "Brief description of what flowchart does"
+}}
+```
+
+**POSITIONING:**
+- Start at top: y=50, then increment by 100-150 for each level
+- Center main flow at x=200
+- Decision branches: Yes path at x=50, No path at x=350
+
+Return ONLY the JSON structure."""
+
+    async def _analyze_with_gemini_text(self, ocr_text: str) -> Dict[str, Any]:
+        """Analyze flowchart structure using Gemini text API"""
+        try:
+            headers = {"Content-Type": "application/json"}
+            prompt = self._get_flowchart_prompt(ocr_text)
+
             payload = {
                 "contents": [
                     {
-                        "parts": [
-                            {"text": prompt},
-                            {"inline_data": {"mime_type": "image/png", "data": image_b64}}
-                        ]
+                        "parts": [{"text": prompt}]
                     }
-                ]
+                ],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "topP": 0.95,
+                    "topK": 40,
+                    "maxOutputTokens": 4096
+                }
             }
-            params = {"key": self.api_key}
+            params = {"key": self.gemini_api_key}
 
             async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(self.base_url, headers=headers, params=params, json=payload)
+                response = await client.post(self.gemini_base_url, headers=headers, params=params, json=payload)
                 
                 if response.status_code == 403:
                     return {
@@ -202,51 +199,222 @@ Analyze the provided flowchart image with this comprehensive approach and return
                         "data": None
                     }
                 
-                try:
-                    result = response.json()
-                    content = result["candidates"][0]["content"]["parts"][0]["text"]
-                    
-                    # Try to extract JSON from the response
-                    import json
-                    import re
-                    
-                    # Enhanced JSON extraction with multiple strategies
-                    parsed_data = self._extract_json_from_response(content)
-                    if parsed_data:
-                        # Validate and enhance the parsed data
-                        validated_data = self._validate_flowchart_data(parsed_data)
-                        return {
-                            "success": True,
-                            "error": None,
-                            "data": {
-                                "analysis": validated_data,
-                                "raw_response": content,
-                                "extraction_method": "enhanced_json_parsing"
-                            }
-                        }
-                    
+                result = response.json()
+                content = result["candidates"][0]["content"]["parts"][0]["text"]
+                
+                parsed_data = self._extract_json_from_response(content)
+                if parsed_data:
+                    validated_data = self._validate_flowchart_data(parsed_data)
                     return {
                         "success": True,
                         "error": None,
                         "data": {
-                            "analysis": {"raw_analysis": content},
-                            "raw_response": content
+                            "analysis": validated_data,
+                            "raw_response": content,
+                            "extraction_method": "ocr_plus_gemini_text"
                         }
                     }
-                    
-                except Exception as e:
-                    logger.error(f"Failed to parse Gemini vision response: {str(e)}")
-                    return {
-                        "success": False,
-                        "error": "Failed to parse Gemini vision response",
-                        "data": None
+                
+                return {
+                    "success": True,
+                    "error": None,
+                    "data": {
+                        "analysis": {"raw_analysis": content},
+                        "raw_response": content
                     }
-                    
+                }
+                
         except Exception as e:
-            logger.error(f"Gemini vision API error: {str(e)}")
+            logger.error(f"Gemini text API error: {str(e)}")
             return {
                 "success": False,
-                "error": f"Gemini vision API error: {str(e)}",
+                "error": f"Gemini text API error: {str(e)}",
+                "data": None
+            }
+
+    async def _analyze_with_groq(self, ocr_text: str) -> Dict[str, Any]:
+        """Analyze flowchart structure using Groq API (fallback)"""
+        try:
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.groq_api_key}"
+            }
+            prompt = self._get_flowchart_prompt(ocr_text)
+
+            payload = {
+                "model": self.groq_model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.1,
+                "max_tokens": 4096
+            }
+
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(self.groq_base_url, headers=headers, json=payload)
+                
+                if response.status_code == 401:
+                    return {
+                        "success": False,
+                        "error": "Groq API key is invalid",
+                        "data": None
+                    }
+                elif response.status_code == 429:
+                    return {
+                        "success": False,
+                        "error": "Groq API rate limit exceeded",
+                        "data": None
+                    }
+                elif response.status_code != 200:
+                    return {
+                        "success": False,
+                        "error": f"Groq API returned status {response.status_code}",
+                        "data": None
+                    }
+                
+                result = response.json()
+                content = result["choices"][0]["message"]["content"]
+                
+                parsed_data = self._extract_json_from_response(content)
+                if parsed_data:
+                    validated_data = self._validate_flowchart_data(parsed_data)
+                    return {
+                        "success": True,
+                        "error": None,
+                        "data": {
+                            "analysis": validated_data,
+                            "raw_response": content,
+                            "extraction_method": "ocr_plus_groq"
+                        }
+                    }
+                
+                return {
+                    "success": True,
+                    "error": None,
+                    "data": {
+                        "analysis": {"raw_analysis": content},
+                        "raw_response": content
+                    }
+                }
+                
+        except Exception as e:
+            logger.error(f"Groq API error: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Groq API error: {str(e)}",
+                "data": None
+            }
+
+    async def _analyze_with_vision(self, image_bytes: bytes, filename: str = "flowchart.png") -> Dict[str, Any]:
+        """
+        Fallback: Analyze handwritten flowchart using Gemini Vision API directly.
+        Used when OCR fails to extract meaningful text.
+        """
+        try:
+            if not settings.is_gemini_configured():
+                return {
+                    "success": False,
+                    "error": "Gemini API key not configured or service disabled",
+                    "data": None
+                }
+
+            logger.info("GeminiFlowchartService: Using Vision API fallback")
+            
+            headers = {"Content-Type": "application/json"}
+            prompt = """Analyze this handwritten flowchart image and extract its structure.
+
+**RULES:**
+1. DIAMONDS = Decision nodes (Yes/No branches)
+2. RECTANGLES = Process nodes
+3. OVALS = Start/End
+4. Follow arrows for connections
+
+**OUTPUT (JSON only):**
+```json
+{
+  "elements": [
+    {"id": "start_1", "type": "start", "text": "Start", "shape": "oval", "position": {"x": 200, "y": 50}, "connections_to": ["process_1"]}
+  ],
+  "decision_branches": [],
+  "flow_direction": "top_to_bottom",
+  "title": "Title",
+  "description": "Description"
+}
+```
+
+Return ONLY JSON."""
+
+            # Convert image to base64
+            image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+            
+            # Detect mime type
+            mime_type = "image/png"
+            if image_bytes[:3] == b'\xff\xd8\xff':
+                mime_type = "image/jpeg"
+            elif image_bytes[:4] == b'\x89PNG':
+                mime_type = "image/png"
+            
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"inline_data": {"mime_type": mime_type, "data": image_b64}},
+                            {"text": prompt}
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "topP": 0.95,
+                    "topK": 40,
+                    "maxOutputTokens": 4096
+                }
+            }
+            params = {"key": self.gemini_api_key}
+
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(self.gemini_base_url, headers=headers, params=params, json=payload)
+                
+                if response.status_code != 200:
+                    return {
+                        "success": False,
+                        "error": f"Gemini Vision API returned status {response.status_code}",
+                        "data": None
+                    }
+                
+                result = response.json()
+                content = result["candidates"][0]["content"]["parts"][0]["text"]
+                
+                parsed_data = self._extract_json_from_response(content)
+                if parsed_data:
+                    validated_data = self._validate_flowchart_data(parsed_data)
+                    return {
+                        "success": True,
+                        "error": None,
+                        "data": {
+                            "analysis": validated_data,
+                            "raw_response": content,
+                            "extraction_method": "vision_api_fallback"
+                        }
+                    }
+                
+                return {
+                    "success": True,
+                    "error": None,
+                    "data": {
+                        "analysis": {"raw_analysis": content},
+                        "raw_response": content
+                    }
+                }
+                
+        except Exception as e:
+            logger.error(f"Gemini Vision API error: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Gemini Vision API error: {str(e)}",
                 "data": None
             }
 
@@ -262,92 +430,35 @@ Analyze the provided flowchart image with this comprehensive approach and return
                     "data": None
                 }
 
-            prompt = f"""
-You are a flowchart optimization expert. Analyze and enhance this flowchart data for maximum clarity and accuracy.
+            prompt = f"""Optimize this flowchart structure for LaTeX generation. Fix any issues and improve clarity.
 
-## ORIGINAL ANALYSIS:
+INPUT DATA:
 {analysis_data}
 
-## OPTIMIZATION TASKS:
+TASKS:
+1. Fix IDs: Use format start_1, process_1, decision_1, end_1
+2. Fix types: oval→start/end, rectangle→process, diamond→decision
+3. Clean text: Fix spelling, standardize operators (==, !=, %, &&, ||)
+4. Validate connections: Every node should connect properly, no orphans
+5. Decision branches: Every decision MUST have yes_path and no_path arrays
+6. Optimize positions: Use 100-150px spacing, center main flow at x=200
 
-### 1. **ID STANDARDIZATION**
-- Ensure unique, descriptive IDs (start_1, process_2, decision_1, end_1)
-- Follow semantic naming conventions
-- Fix any duplicate or missing IDs
-
-### 2. **TYPE VALIDATION** 
-- Verify shape-to-type mapping accuracy:
-  * Oval shapes → start/end types
-  * Rectangles → process types  
-  * Diamonds → decision types
-- Correct any misclassifications
-
-### 3. **TEXT OPTIMIZATION**
-- Clean up extracted text (remove artifacts, fix spacing)
-- Standardize programming syntax (==, !=, &&, ||, %)
-- Improve readability while preserving meaning
-- Fix obvious spelling/transcription errors
-
-### 4. **CONNECTION LOGIC VALIDATION**
-- Verify all connections follow logical flow
-- Ensure decision nodes have proper Yes/No branches
-- Check for orphaned nodes or missing connections
-- Validate start→process→decision→end flow patterns
-
-### 5. **POSITIONING REFINEMENT**
-- Optimize coordinates for visual clarity
-- Ensure proper spacing between connected nodes
-- Align decision branches symmetrically
-- Maintain logical top-to-bottom or left-to-right flow
-
-### 6. **STRUCTURAL INTEGRITY**
-- Add missing essential elements (start/end nodes)
-- Remove duplicate or redundant elements
-- Ensure single start point and clear end point(s)
-- Fix broken connection chains
-
-### 7. **DECISION BRANCH ENHANCEMENT**
-- Clearly define Yes/No paths for all decisions
-- Extract and clarify conditional expressions
-- Ensure branch paths converge properly
-- Add missing branch labels if inferrable
-
-## ENHANCED OUTPUT REQUIREMENTS:
-
-Return the optimized analysis with these improvements:
-
+OUTPUT (JSON only):
 ```json
-{
-  "elements": [...], // Optimized elements array
-  "flow_direction": "...", // Validated direction
-  "title": "...", // Cleaned title
-  "description": "...", // Enhanced description
-  "decision_branches": [...], // Clarified branches
-  "optimization_log": [
-    "Fixed duplicate IDs in nodes 2 and 3",
-    "Corrected decision type for diamond shape",
-    "Enhanced text readability for condition",
-    "Added missing connection from process to end",
-    "Standardized coordinate positioning"
+{{
+  "elements": [
+    {{"id": "start_1", "type": "start", "text": "Start", "shape": "oval", "position": {{"x": 200, "y": 50}}, "connections_to": ["process_1"]}}
   ],
-  "quality_score": 0.95, // Overall accuracy estimate
-  "recommendations": [
-    "Consider adding error handling path",
-    "Condition could be more specific"
-  ]
-}
+  "decision_branches": [
+    {{"decision_id": "decision_1", "condition": "condition text", "yes_path": ["node_id"], "no_path": ["node_id"]}}
+  ],
+  "flow_direction": "top_to_bottom",
+  "title": "Flowchart Title",
+  "description": "What the flowchart does"
+}}
 ```
 
-## QUALITY STANDARDS:
-- ✅ All nodes have unique, meaningful IDs
-- ✅ Shape types match visual appearance  
-- ✅ Text is clean and readable
-- ✅ All logical paths are connected
-- ✅ Decision branches are clearly defined
-- ✅ Flow follows standard flowchart conventions
-- ✅ Positioning supports visual clarity
-
-Focus on improving accuracy, completeness, and logical consistency while preserving the original flowchart's intent and structure."""
+Return ONLY the optimized JSON."""
 
             headers = {"Content-Type": "application/json"}
             payload = {
@@ -355,12 +466,17 @@ Focus on improving accuracy, completeness, and logical consistency while preserv
                     {
                         "parts": [{"text": prompt}]
                     }
-                ]
+                ],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "topP": 0.95,
+                    "maxOutputTokens": 4096
+                }
             }
-            params = {"key": self.api_key}
+            params = {"key": self.gemini_api_key}
 
             async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(self.base_url, headers=headers, params=params, json=payload)
+                response = await client.post(self.gemini_base_url, headers=headers, params=params, json=payload)
                 
                 if response.status_code != 200:
                     return {

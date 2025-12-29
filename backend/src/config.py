@@ -44,6 +44,11 @@ class Settings:
     GEMINI_BASE_URL: str = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent")
     OCR_SPACE_API_KEY: Optional[str] = os.getenv("OCR_SPACE_API_KEY")
     OCR_SPACE_BASE_URL: str = os.getenv("OCR_SPACE_BASE_URL", "https://api.ocr.space/parse/image")
+    
+    # Groq API (fallback for Gemini)
+    GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY")
+    GROQ_BASE_URL: str = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1/chat/completions")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 
     # LaTeX Configuration
@@ -67,6 +72,10 @@ class Settings:
     def is_ocr_configured(self) -> bool:
         """Return True when OCR.space API key and base URL are configured."""
         return bool(self.OCR_SPACE_API_KEY and self.OCR_SPACE_BASE_URL)
+
+    def is_groq_configured(self) -> bool:
+        """Return True when Groq API key is configured."""
+        return bool(self.GROQ_API_KEY)
 
     def get_tectonic_paths(self) -> list[str]:
         """Return candidate paths for the tectonic executable.

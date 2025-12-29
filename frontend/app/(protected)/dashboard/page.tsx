@@ -1,13 +1,13 @@
 "use client";
 
 import DashboardHeader from "./components/DashboardHeader";
-import { Plus, Search, Download, Copy, Trash2, ExternalLink, Archive, Loader2, FileText } from "lucide-react";
+import { Plus, Search, Copy, Trash2, ExternalLink, Archive, Loader2, FileText, Pencil, MoreVertical, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
-import { getProjects, createProject, deleteProject } from "@/lib/api/projects";
+import { getProjects, createProject, deleteProject, updateProject } from "@/lib/api/projects";
 import type { ProjectListItem, ProjectStatus } from "@/types/project";
 import { toast } from "sonner";
 
@@ -54,8 +54,23 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [statusMenuOpen, setStatusMenuOpen] = useState<string | null>(null);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
 
   const displayName = user?.full_name || user?.username || 'User';
+
+  // Close status menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
+        setStatusMenuOpen(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch projects on mount
   useEffect(() => {
@@ -104,6 +119,49 @@ export default function DashboardPage() {
       console.error('Failed to delete project:', error);
       toast.error('Failed to delete project');
     }
+  };
+
+  const handleRenameProject = async (projectId: string) => {
+    if (!editingTitle.trim()) {
+      toast.error('Project title cannot be empty');
+      return;
+    }
+    try {
+      await updateProject(projectId, { title: editingTitle.trim() });
+      setProjects(prev => prev.map(p => 
+        p.id === projectId ? { ...p, title: editingTitle.trim() } : p
+      ));
+      toast.success('Project renamed');
+      setEditingProjectId(null);
+      setEditingTitle('');
+    } catch (error) {
+      console.error('Failed to rename project:', error);
+      toast.error('Failed to rename project');
+    }
+  };
+
+  const handleUpdateStatus = async (projectId: string, newStatus: ProjectStatus) => {
+    try {
+      await updateProject(projectId, { status: newStatus });
+      setProjects(prev => prev.map(p => 
+        p.id === projectId ? { ...p, status: newStatus } : p
+      ));
+      toast.success(`Status updated to ${formatStatus(newStatus).label}`);
+      setStatusMenuOpen(null);
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      toast.error('Failed to update status');
+    }
+  };
+
+  const startEditing = (project: ProjectListItem) => {
+    setEditingProjectId(project.id);
+    setEditingTitle(project.title);
+  };
+
+  const cancelEditing = () => {
+    setEditingProjectId(null);
+    setEditingTitle('');
   };
 
   const handleOpenProject = (projectId: string) => {
@@ -272,25 +330,106 @@ export default function DashboardPage() {
                           />
                         </td>
                         <td className="px-6 py-4">
-                          <button 
-                            onClick={() => handleOpenProject(project.id)}
-                            className="text-[#1f1e24] font-medium hover:text-[#FA5F55] transition-colors text-left text-lg"
-                          >
-                            {project.title}
-                          </button>
+                          {editingProjectId === project.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingTitle}
+                                onChange={(e) => setEditingTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleRenameProject(project.id);
+                                  if (e.key === 'Escape') cancelEditing();
+                                }}
+                                className="px-3 py-1.5 text-lg font-medium border-2 border-[#FA5F55] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FA5F55]/20 bg-white"
+                                autoFocus
+                              />
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleRenameProject(project.id)}
+                                className="p-1.5 bg-green-100 hover:bg-green-200 rounded-lg transition-colors"
+                              >
+                                <Check className="w-4 h-4 text-green-600" />
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={cancelEditing}
+                                className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                              >
+                                <X className="w-4 h-4 text-gray-600" />
+                              </motion.button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 group/title">
+                              <button 
+                                onClick={() => handleOpenProject(project.id)}
+                                className="text-[#1f1e24] font-medium hover:text-[#FA5F55] transition-colors text-left text-lg"
+                              >
+                                {project.title}
+                              </button>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => startEditing(project)}
+                                className="p-1 opacity-0 group-hover/title:opacity-100 hover:bg-[#FA5F55]/10 rounded transition-all"
+                                title="Rename"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-[#1f1e24]/50" />
+                              </motion.button>
+                            </div>
+                          )}
                           {project.description && (
-                            <p className="text-sm text-[#1f1e24]/50 truncate max-w-md">
+                            <p className="text-sm text-[#1f1e24]/50 truncate max-w-md mt-1">
                               {project.description}
                             </p>
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <span className={cn(
-                            "inline-flex px-2.5 py-1 rounded-full text-xs font-medium",
-                            statusInfo.color
-                          )}>
-                            {statusInfo.label}
-                          </span>
+                          <div className="relative" ref={statusMenuOpen === project.id ? statusMenuRef : null}>
+                            <button
+                              onClick={() => setStatusMenuOpen(statusMenuOpen === project.id ? null : project.id)}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-[#FA5F55]/30 transition-all",
+                                statusInfo.color
+                              )}
+                            >
+                              {statusInfo.label}
+                              <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            <AnimatePresence>
+                              {statusMenuOpen === project.id && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: -10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -10 }}
+                                  className="absolute z-20 mt-1 left-0 bg-white rounded-xl shadow-xl border border-gray-200 py-1 min-w-[140px]"
+                                >
+                                  {(['draft', 'in_progress', 'completed', 'archived'] as ProjectStatus[]).map((status) => {
+                                    const info = formatStatus(status);
+                                    return (
+                                      <button
+                                        key={status}
+                                        onClick={() => handleUpdateStatus(project.id, status)}
+                                        className={cn(
+                                          "w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors",
+                                          project.status === status && "bg-gray-50"
+                                        )}
+                                      >
+                                        <span className={cn("w-2 h-2 rounded-full", info.color.split(' ')[0])} />
+                                        {info.label}
+                                        {project.status === status && (
+                                          <Check className="w-3.5 h-3.5 ml-auto text-[#FA5F55]" />
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className="text-sm text-[#1f1e24]/70">
@@ -312,9 +451,10 @@ export default function DashboardPage() {
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
                               className="p-2 hover:bg-[#FA5F55]/10 rounded-lg transition-colors"
-                              title="Download"
+                              title="Rename"
+                              onClick={() => startEditing(project)}
                             >
-                              <Download className="w-4 h-4 text-[#1f1e24]/70" />
+                              <Pencil className="w-4 h-4 text-[#1f1e24]/70" />
                             </motion.button>
                             <motion.button
                               whileHover={{ scale: 1.1 }}

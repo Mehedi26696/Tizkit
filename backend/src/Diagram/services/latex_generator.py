@@ -298,41 +298,45 @@ class DiagramLatexGenerator:
 
         used_colors = []
 
-        # Center and scale all node positions to fit the page
-        if nodes:
-            xs = [node.get("x", 0) for node in nodes]
-            ys = [node.get("y", 0) for node in nodes]
-            min_x, max_x = min(xs), max(xs)
-            min_y, max_y = min(ys), max(ys)
-            
-            # Target area: -5 to 5 in both axes
-            target_min, target_max = -5, 5
-            dx = max_x - min_x if max_x > min_x else 1
-            dy = max_y - min_y if max_y > min_y else 1
-            
-            # Prevent extreme scaling
-            scale_x = (target_max - target_min) / dx
-            scale_y = (target_max - target_min) / dy
-            scale = min(scale_x, scale_y, 1.0)  # Cap at 1.0 to prevent huge magnification
-            
-            # Calculate centering offsets
-            offset_x = target_min - min_x * scale + ((target_max - target_min) - dx * scale) / 2
-            offset_y = target_min - min_y * scale + ((target_max - target_min) - dy * scale) / 2
-            
-            logger.info(f"DiagramLatexGenerator: Coordinate scaling - scale={scale:.4f}, offset_x={offset_x:.2f}, offset_y={offset_y:.2f}")
-            logger.info(f"DiagramLatexGenerator: Input range - x:[{min_x}, {max_x}], y:[{min_y}, {max_y}]")
-        else:
-            scale = 1
-            offset_x = 0
-            offset_y = 0
+        # Get canvas size from data, or use default frontend canvas size
+        canvas_width = data.get("canvasWidth", 500)
+        canvas_height = data.get("canvasHeight", 350)
+        
+        # Fixed scale: 1 pixel = 0.02 cm (50 pixels = 1 cm in TikZ)
+        # This ensures consistent positioning regardless of node count/placement
+        PIXELS_PER_CM = 50.0
+        
+        # Center the canvas in TikZ coordinate system
+        # Canvas origin (0,0) is top-left, TikZ origin is at center
+        center_x = canvas_width / 2
+        center_y = canvas_height / 2
+        
+        logger.info(f"DiagramLatexGenerator: Using fixed scale {PIXELS_PER_CM} px/cm, canvas {canvas_width}x{canvas_height}")
 
         for i, node in enumerate(nodes):
             node_id = node.get("id", f"node{i}")
             label = self._escape_latex(node.get("label", node.get("text", "Node")))
+            
+            # Get raw pixel coordinates (top-left of node bounding box)
             raw_x = node.get("x", 0)
             raw_y = node.get("y", 0)
-            x = raw_x * scale + offset_x
-            y = -raw_y * scale + offset_y
+            node_width = node.get("width", 90)
+            node_height = node.get("height", 50)
+            
+            # Calculate node center in canvas coordinates
+            node_center_x = raw_x + node_width / 2
+            node_center_y = raw_y + node_height / 2
+            
+            # Convert to TikZ coordinates:
+            # 1. Subtract canvas center to center the diagram
+            # 2. Divide by pixels per cm to get cm
+            # 3. Invert Y axis (canvas Y goes down, TikZ Y goes up)
+            x = (node_center_x - center_x) / PIXELS_PER_CM
+            y = -(node_center_y - center_y) / PIXELS_PER_CM
+            
+            # Round to 2 decimal places for cleaner LaTeX
+            x = round(x, 2)
+            y = round(y, 2)
             
             # Clamp coordinates to safe LaTeX dimensions (±15cm)
             x = max(-15, min(15, x))

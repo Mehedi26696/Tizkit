@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Depends
 from sqlmodel import Session
 import logging
-from ..services import ocr_service, gemini_service
+from ..services import ocr_service, image_to_latex_service
 from ..services.latex_reconstruct import wrap_latex
 from ..schemas.imageTolatex_schemas import OCRResponse
 from ...auth.middleware.credits_middleware import create_credit_checker
@@ -46,14 +46,14 @@ async def ocr_text(
         original_text = ocr_result["text"]
         
         # Try to improve the text using Gemini
-        improvement_result = await gemini_service.improve_text(original_text)
+        improvement_result = await image_to_latex_service.improve_text(original_text)
         
         if improvement_result["success"]:
             improved_text = improvement_result["data"]["content"].strip()
             latex_code = wrap_latex(improved_text)
             
             # Send the generated LaTeX code to Gemini for refinement
-            refinement_result = await gemini_service.fix_latex(latex_code)
+            refinement_result = await image_to_latex_service.fix_latex(latex_code)
             
             if refinement_result["success"]:
                 refined_latex = refinement_result["data"]["content"].strip()
@@ -102,7 +102,7 @@ async def ocr_text(
             latex_code = wrap_latex(original_text)
             
             # Even with original text, try to refine the LaTeX
-            refinement_result = await gemini_service.fix_latex(latex_code)
+            refinement_result = await image_to_latex_service.fix_latex(latex_code)
             
             if refinement_result["success"]:
                 refined_latex = refinement_result["data"]["content"].strip()
@@ -185,10 +185,8 @@ async def fix_latex_with_error(
         logger.info(f"Error message: {request.error_message[:200]}...")
         
         # Call Gemini to fix the LaTeX with error context
-        fix_result = await gemini_service.fix_latex_with_error(
-            request.latex_code, 
-            request.error_message
-        )
+        # Use Gemini first, fallback to Groq
+        fix_result = await image_to_latex_service.explain_error(request.error_message, request.latex_code)
         
         if fix_result.get("success") and fix_result.get("data"):
             fixed_code = fix_result["data"].get("content", "")

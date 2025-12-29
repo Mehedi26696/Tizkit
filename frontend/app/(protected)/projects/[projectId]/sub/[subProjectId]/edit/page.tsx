@@ -5,20 +5,22 @@ import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Save, Loader2, Copy, Download, Settings, 
   Table, GitBranch, Image as ImageIcon, PenTool, Check, X,
-  FileText, ChevronRight, Upload, Eye
+  FileText, ChevronRight, Upload, Eye, GripVertical
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { getProject, getProjectFiles, getFileSignedUrl } from '@/lib/api/projects';
-import { getSubProject, updateSubProject, autoSaveSubProject, getSubProjectFileLinks, linkFileToSubProject } from '@/lib/api/subProjects';
-import type { Project, ProjectFile, SubProject, SubProjectType } from '@/types/project';
+import { getSubProject, updateSubProject, autoSaveSubProject, getSubProjectFileLinks, linkFileToSubProject, unlinkFileFromSubProject } from '@/lib/api/subProjects';
+import type { Project, ProjectFile, SubProject, SubProjectType, SubProjectFileLink } from '@/types/project';
 import TableEditor from '@/app/(protected)/functions/TableEditor';
 import DiagramEditor from '@/app/(protected)/functions/DiagramEditor';
 import LatexPreview from '@/app/(protected)/functions/LatexPreview';
 import ExportModal from '@/app/(protected)/functions/ExportModal';
-import { latexService } from '@/services/latexService';
+import { latexService, CreditError } from '@/services/latexService';
+import { AlertTriangle, CreditCard } from 'lucide-react';
 
 interface PageProps {
   params: Promise<{ projectId: string; subProjectId: string }>;
@@ -32,6 +34,7 @@ export default function SubProjectEditorPage({ params }: PageProps) {
   const [subProject, setSubProject] = useState<SubProject | null>(null);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [linkedFiles, setLinkedFiles] = useState<string[]>([]);
+  const [fileLinks, setFileLinks] = useState<SubProjectFileLink[]>([]);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -50,6 +53,7 @@ export default function SubProjectEditorPage({ params }: PageProps) {
   // For Image to LaTeX
   const [selectedImage, setSelectedImage] = useState<{ url: string; filename: string; fileId: string } | null>(null);
   const [confidence, setConfidence] = useState<number>(0);
+  const [creditError, setCreditError] = useState<CreditError | null>(null);
   
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -69,6 +73,7 @@ export default function SubProjectEditorPage({ params }: PageProps) {
         setSubProject(subProjectData);
         setProjectFiles(filesData);
         setLinkedFiles(linksData.map(l => l.project_file_id));
+        setFileLinks(linksData);
         
         // Restore editor state
         if (subProjectData.latex_code) {
@@ -191,8 +196,9 @@ export default function SubProjectEditorPage({ params }: PageProps) {
   const handleSelectFile = async (file: ProjectFile) => {
     try {
       // Link file to sub-project
-      await linkFileToSubProject(projectId, subProjectId, file.id, 'source');
+      const linkData = await linkFileToSubProject(projectId, subProjectId, file.id, 'source');
       setLinkedFiles(prev => [...prev, file.id]);
+      setFileLinks(prev => [...prev, linkData]);
       
       // Get signed URL for preview
       if (file.file_url) {
@@ -208,27 +214,65 @@ export default function SubProjectEditorPage({ params }: PageProps) {
     }
   };
 
+  // Unlink file from sub-project
+  const handleUnlinkFile = async (fileId: string) => {
+    try {
+      // Find the link object to get its ID
+      const link = fileLinks.find(l => l.project_file_id === fileId);
+      if (!link) {
+        toast.error('File link not found');
+        return;
+      }
+      
+      await unlinkFileFromSubProject(projectId, subProjectId, link.id);
+      setLinkedFiles(prev => prev.filter(id => id !== fileId));
+      setFileLinks(prev => prev.filter(l => l.project_file_id !== fileId));
+      
+      // Clear selected image if it was the unlinked file
+      if (selectedImage?.fileId === fileId) {
+        setSelectedImage(null);
+      }
+      
+      toast.success('File unlinked successfully');
+    } catch (error) {
+      console.error('Failed to unlink file:', error);
+      toast.error('Failed to unlink file');
+    }
+  };
+
   // Process image to LaTeX
   const processImage = async () => {
-    if (!selectedImage) return;
+    if (!selectedImage || !subProject) return;
     
     try {
       setIsCompiling(true);
+      setCreditError(null); // Clear any previous credit error
       
       // Fetch the image from the signed URL and convert to File
       const response = await fetch(selectedImage.url);
       const blob = await response.blob();
       const file = new File([blob], selectedImage.filename, { type: blob.type });
       
-      // Call the OCR API
-      const result = await latexService.processImage(file);
+      // Use different service based on sub-project type
+      const isHandwrittenFlowchart = subProject.sub_project_type === 'handwrittenFlowchart';
+      const result = isHandwrittenFlowchart 
+        ? await latexService.processHandwrittenFlowchart(file)
+        : await latexService.processImage(file);
       
       if (result.success && result.data) {
         const latexResult = result.data.data?.latex_code || result.data.latex_code || '';
         setLatexCode(latexResult);
-        setConfidence(result.data.data?.confidence || 85);
+        setConfidence(result.data.data?.confidence || (isHandwrittenFlowchart ? 0 : 85));
         setHasChanges(true);
-        toast.success('Image converted to LaTeX');
+        
+        if (isHandwrittenFlowchart && result.data.used_fallback) {
+          toast.warning('Template generated - flowchart couldn\'t be fully analyzed. Please modify as needed.');
+        } else {
+          toast.success(isHandwrittenFlowchart ? 'Handwritten flowchart converted to LaTeX' : 'Image converted to LaTeX');
+        }
+      } else if (result.creditError) {
+        // Handle credit error with dedicated UI
+        setCreditError(result.creditError);
       } else {
         toast.error(result.error || 'Failed to convert image');
       }
@@ -295,9 +339,9 @@ export default function SubProjectEditorPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       {/* Header */}
-      <header className="bg-white/90 backdrop-blur-md shadow-lg border-b border-gray-200/50 sticky top-0 z-40">
+      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40 shrink-0">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -404,210 +448,258 @@ export default function SubProjectEditorPage({ params }: PageProps) {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Main Content - 3 Panel Resizable Layout */}
+      <div className="h-[calc(100vh-64px)]">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* Left Panel - Editor */}
-          <div className="space-y-6">
-            {/* Editor based on type */}
-            {subProject.sub_project_type === 'table' && (
-              <Card className="p-6">
-                <div className="flex items-center gap-3 mb-4">
+          <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+            <div className="h-full overflow-y-auto bg-white border-r border-gray-200 p-4">
+              <div className="space-y-4">
+                {/* Editor Header */}
+                <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
                   <div className="w-8 h-8 bg-[#FA5F55]/10 rounded-lg flex items-center justify-center">
-                    <Table className="w-5 h-5 text-[#FA5F55]" />
+                    {getTypeIcon(subProject.sub_project_type)}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">Table Configuration</h3>
-                    <p className="text-xs text-gray-500">Create and customize your data table</p>
+                    <h3 className="font-semibold text-gray-800">Editor</h3>
+                    <p className="text-xs text-gray-500">
+                      {subProject.sub_project_type === 'table' && 'Configure your data table'}
+                      {subProject.sub_project_type === 'diagram' && 'Design your TikZ diagram'}
+                      {(subProject.sub_project_type === 'imageToLatex' || subProject.sub_project_type === 'handwrittenFlowchart') && 'Select and process image'}
+                    </p>
                   </div>
                 </div>
-                <TableEditor onTableChange={handleEditorChange} initialData={editorData} />
-              </Card>
-            )}
 
-            {subProject.sub_project_type === 'diagram' && (
-              <Card className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 bg-[#FA5F55]/10 rounded-lg flex items-center justify-center">
-                    <GitBranch className="w-5 h-5 text-[#FA5F55]" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">Diagram Editor</h3>
-                    <p className="text-xs text-gray-500">Design your TikZ diagram</p>
-                  </div>
-                </div>
-                <DiagramEditor onDiagramChange={handleEditorChange} initialData={editorData} />
-              </Card>
-            )}
+                {/* Editor based on type */}
+                {subProject.sub_project_type === 'table' && (
+                  <TableEditor onTableChange={handleEditorChange} initialData={editorData} />
+                )}
 
-            {(subProject.sub_project_type === 'imageToLatex' || subProject.sub_project_type === 'handwrittenFlowchart') && (
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-[#FA5F55]/10 rounded-lg flex items-center justify-center">
-                      <ImageIcon className="w-5 h-5 text-[#FA5F55]" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">
-                        {subProject.sub_project_type === 'imageToLatex' ? 'Image to LaTeX' : 'Handwritten Flowchart'}
-                      </h3>
-                      <p className="text-xs text-gray-500">Select an image from your project files</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowFilePicker(true)}
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Select Image
-                  </Button>
-                </div>
-                
-                {selectedImage ? (
+                {subProject.sub_project_type === 'diagram' && (
+                  <DiagramEditor onDiagramChange={handleEditorChange} initialData={editorData} />
+                )}
+
+                {(subProject.sub_project_type === 'imageToLatex' || subProject.sub_project_type === 'handwrittenFlowchart') && (
                   <div className="space-y-4">
-                    <div className="rounded-lg border-2 border-dashed border-gray-200 p-4">
-                      <img
-                        src={selectedImage.url}
-                        alt={selectedImage.filename}
-                        className="max-h-64 w-full object-contain rounded"
-                      />
-                      <p className="text-sm text-gray-500 text-center mt-2">{selectedImage.filename}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">Source Image</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowFilePicker(true)}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Select
+                      </Button>
                     </div>
                     
-                    <Button
-                      onClick={processImage}
-                      disabled={isCompiling}
-                      className="w-full bg-[#FA5F55] hover:bg-[#FA5F55]/90"
-                    >
-                      {isCompiling ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>Convert to LaTeX</>
-                      )}
-                    </Button>
-                    {confidence > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500">Confidence:</span>
-                        <Badge variant={confidence >= 80 ? "default" : confidence >= 50 ? "secondary" : "destructive"}>
-                          {confidence}%
-                        </Badge>
+                    {selectedImage ? (
+                      <div className="space-y-3">
+                        <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
+                          <img
+                            src={selectedImage.url}
+                            alt={selectedImage.filename}
+                            className="max-h-48 w-full object-contain rounded"
+                          />
+                          <p className="text-xs text-gray-500 text-center mt-2 truncate">{selectedImage.filename}</p>
+                        </div>
+                        
+                        <Button
+                          onClick={processImage}
+                          disabled={isCompiling}
+                          className="w-full bg-[#FA5F55] hover:bg-[#FA5F55]/90"
+                          size="sm"
+                        >
+                          {isCompiling ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>Convert to LaTeX</>
+                          )}
+                        </Button>
+                        
+                        {confidence > 0 && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-gray-500">Confidence:</span>
+                            <Badge variant={confidence >= 80 ? "default" : confidence >= 50 ? "secondary" : "destructive"}>
+                              {confidence}%
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        className="rounded-lg border-2 border-dashed border-gray-200 p-8 text-center cursor-pointer hover:border-[#FA5F55]/50 transition-colors"
+                        onClick={() => setShowFilePicker(true)}
+                      >
+                        <ImageIcon className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                        <p className="text-gray-500 text-sm mb-1">No image selected</p>
+                        <p className="text-xs text-gray-400">Click to select from project files</p>
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div
-                    className="rounded-lg border-2 border-dashed border-gray-200 p-12 text-center cursor-pointer hover:border-[#FA5F55]/50 transition-colors"
-                    onClick={() => setShowFilePicker(true)}
-                  >
-                    <ImageIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p className="text-gray-500 mb-2">No image selected</p>
-                    <p className="text-sm text-gray-400">Click to select from project files</p>
+                )}
+
+                {/* Linked Files */}
+                {linkedFiles.length > 0 && (
+                  <div className="pt-4 border-t border-gray-100">
+                    <h4 className="font-medium text-sm text-gray-700 mb-2">Linked Files</h4>
+                    <div className="space-y-1">
+                      {projectFiles.filter(f => linkedFiles.includes(f.id)).map(file => (
+                        <div key={file.id} className="flex items-center justify-between gap-2 text-sm text-gray-600 p-2 rounded hover:bg-gray-50">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <FileText className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{file.filename}</span>
+                          </div>
+                          <button
+                            onClick={() => handleUnlinkFile(file.id)}
+                            className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50"
+                            title="Unlink file"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </Card>
-            )}
 
-            {/* Linked Files */}
-            {linkedFiles.length > 0 && (
-              <Card className="p-4">
-                <h4 className="font-medium text-sm text-gray-700 mb-2">Linked Files</h4>
-                <div className="space-y-2">
-                  {projectFiles.filter(f => linkedFiles.includes(f.id)).map(file => (
-                    <div key={file.id} className="flex items-center gap-2 text-sm text-gray-600">
-                      <FileText className="w-4 h-4" />
-                      {file.filename}
+                {/* Credit Error Alert */}
+                {creditError && (
+                  <div className="p-4 border-2 border-red-200 bg-red-50 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-red-800 text-sm">Insufficient Credits</h4>
+                        <p className="text-red-600 text-xs mt-1">
+                          Need {creditError.credits_needed} credits, have {creditError.available_credits}
+                        </p>
+                        <div className="flex gap-2 mt-3">
+                          <Button
+                            size="sm"
+                            onClick={() => router.push('/dashboard/billing')}
+                            className="bg-[#FA5F55] hover:bg-[#FA5F55]/90 text-xs h-7"
+                          >
+                            <CreditCard className="w-3 h-3 mr-1" />
+                            Get Credits
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setCreditError(null)}
+                            className="text-xs h-7"
+                          >
+                            Dismiss
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-          </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </ResizablePanel>
 
-          {/* Right Panel - Preview & LaTeX */}
-          <div className="space-y-6">
-            {/* Live Preview */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Eye className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">Live Preview</h3>
-                    <p className="text-xs text-gray-500">Real-time rendering</p>
-                  </div>
+          <ResizableHandle withHandle />
+
+          {/* Middle Panel - LaTeX Code */}
+          <ResizablePanel defaultSize={35} minSize={20} maxSize={60}>
+            <div className="h-full overflow-hidden bg-gray-900 flex flex-col">
+              {/* LaTeX Header */}
+              <div className="flex items-center justify-between px-4 py-3 bg-gray-800 border-b border-gray-700">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-green-400" />
+                  <span className="font-medium text-gray-200 text-sm">LaTeX Code</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {isCompiling && <Badge variant="secondary">Compiling...</Badge>}
-                  {latexCode && <Badge variant="secondary">Ready</Badge>}
+                  <Badge variant="secondary" className="text-xs bg-gray-700 text-gray-300">Overleaf Ready</Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={copyToClipboard}
+                    disabled={!latexCode}
+                    className="h-7 px-2 text-gray-400 hover:text-white hover:bg-gray-700"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
                 </div>
               </div>
               
-              {latexCode ? (
-                <div className="bg-white rounded-lg p-4 border border-gray-200 min-h-[200px]">
-                  <LatexPreview 
-                    latexCode={latexCode} 
-                    type={getPreviewType(subProject.sub_project_type)} 
-                    onLatexFixed={(fixedLatex) => {
-                      setLatexCode(fixedLatex);
-                      setHasChanges(true);
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="bg-gray-50 rounded-lg p-12 text-center">
-                  <div className="text-4xl mb-4">👁️</div>
-                  <h4 className="font-semibold text-gray-700 mb-2">Preview Area</h4>
-                  <p className="text-sm text-gray-500">
-                    Your LaTeX preview will appear here
-                  </p>
-                </div>
-              )}
-            </Card>
-
-            {/* LaTeX Code */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">LaTeX Source Code</h3>
-                    <p className="text-xs text-gray-500">Editable LaTeX output</p>
-                  </div>
-                </div>
-                <Badge variant="secondary">Overleaf Ready</Badge>
-              </div>
-              
-              {latexCode ? (
-                <div className="relative">
+              {/* LaTeX Editor */}
+              <div className="flex-1 overflow-hidden">
+                {latexCode ? (
                   <textarea
                     value={latexCode}
                     onChange={(e) => handleLatexChange(e.target.value)}
-                    className="w-full h-64 bg-gray-900 text-green-300 text-sm font-mono p-4 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#FA5F55]"
+                    className="w-full h-full bg-gray-900 text-green-300 text-sm font-mono p-4 resize-none focus:outline-none border-none"
                     spellCheck={false}
+                    placeholder="LaTeX code will appear here..."
                   />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-center p-6">
+                    <div>
+                      <div className="text-4xl mb-3 opacity-50">📄</div>
+                      <p className="text-gray-500 text-sm font-medium mb-1">No LaTeX Code Yet</p>
+                      <p className="text-gray-600 text-xs">
+                        {subProject.sub_project_type === 'table' || subProject.sub_project_type === 'diagram'
+                          ? 'Configure your editor to generate LaTeX'
+                          : 'Process an image to generate LaTeX'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          {/* Right Panel - Preview */}
+          <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+            <div className="h-full overflow-hidden bg-white flex flex-col">
+              {/* Preview Header */}
+              <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-green-600" />
+                  <span className="font-medium text-gray-700 text-sm">Live Preview</span>
                 </div>
-              ) : (
-                <div className="bg-gray-50 rounded-lg p-12 text-center">
-                  <div className="text-4xl mb-4">📄</div>
-                  <h4 className="font-semibold text-gray-700 mb-2">No LaTeX Code Yet</h4>
-                  <p className="text-sm text-gray-500">
-                    {subProject.sub_project_type === 'table' || subProject.sub_project_type === 'diagram'
-                      ? 'Configure your editor to generate LaTeX code.'
-                      : 'Select and process an image to generate LaTeX.'}
-                  </p>
+                <div className="flex items-center gap-2">
+                  {isCompiling && <Badge variant="secondary" className="text-xs">Compiling...</Badge>}
+                  {latexCode && !isCompiling && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">Ready</Badge>}
                 </div>
-              )}
-            </Card>
-          </div>
-        </div>
-      </main>
+              </div>
+              
+              {/* Preview Content */}
+              <div className="flex-1 overflow-auto p-4">
+                {latexCode ? (
+                  <div className="h-full">
+                    <LatexPreview 
+                      latexCode={latexCode} 
+                      type={getPreviewType(subProject.sub_project_type)} 
+                      onLatexFixed={(fixedLatex) => {
+                        setLatexCode(fixedLatex);
+                        setHasChanges(true);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-center">
+                    <div>
+                      <div className="text-4xl mb-3 opacity-50">👁️</div>
+                      <p className="text-gray-500 text-sm font-medium mb-1">Preview Area</p>
+                      <p className="text-gray-400 text-xs">
+                        Your LaTeX preview will appear here
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
 
       {/* File Picker Modal */}
       {showFilePicker && (

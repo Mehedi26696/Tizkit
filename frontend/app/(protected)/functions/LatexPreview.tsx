@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import 'katex/dist/katex.min.css';
-import { latexService } from '@/services/latexService';
+import { latexService, CreditError, isCreditError } from '@/services/latexService';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { AlertTriangle, CreditCard } from 'lucide-react';
 
 interface LatexPreviewProps {
   latexCode: string;
@@ -12,10 +14,12 @@ interface LatexPreviewProps {
 }
 
 const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFixed }) => {
+  const router = useRouter();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFixing, setIsFixing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [creditError, setCreditError] = useState<CreditError | null>(null);
 
   // Remove Markdown code block markers and backticks from LaTeX code
   const sanitizeLatex = (code: string) => {
@@ -34,6 +38,7 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
 
     setIsLoading(true);
     setError(null);
+    setCreditError(null);
 
     try {
       let response;
@@ -55,12 +60,27 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
           try {
             const text = await err.response.data.text();
             const errorData = JSON.parse(text);
+            // Check if it's a credit error
+            if (isCreditError(errorData.detail)) {
+              setCreditError(errorData.detail);
+              return;
+            } else if (isCreditError(errorData)) {
+              setCreditError(errorData);
+              return;
+            }
             errorMessage = errorData.detail || errorMessage;
           } catch {
             errorMessage = 'Failed to parse error response';
           }
         } else if (typeof err.response.data === 'object') {
-          // Direct JSON response
+          // Direct JSON response - check for credit error
+          if (isCreditError(err.response.data.detail)) {
+            setCreditError(err.response.data.detail);
+            return;
+          } else if (isCreditError(err.response.data)) {
+            setCreditError(err.response.data);
+            return;
+          }
           errorMessage = err.response.data.detail || err.response.data.message || errorMessage;
         } else if (typeof err.response.data === 'string') {
           errorMessage = err.response.data;
@@ -87,6 +107,8 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
         onLatexFixed(result.fixedLatex);
         setError(null);
         toast.success('LaTeX fixed! Recompiling...');
+      } else if (result.creditError) {
+        setCreditError(result.creditError);
       } else {
         toast.error(result.error || 'Failed to fix LaTeX');
       }
@@ -150,7 +172,57 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
           </div>
         )}
 
-        {error && (
+        {/* Credit Error UI */}
+        {creditError && (
+          <div className="p-6 max-w-md w-full">
+            <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl border-2 border-red-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg text-red-800">Insufficient Credits</h3>
+                  <p className="text-red-600 text-sm">You&apos;ve run out of credits</p>
+                </div>
+              </div>
+              
+              <div className="bg-white/80 rounded-lg p-4 mb-4 space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Service:</span>
+                  <span className="font-medium text-gray-800 capitalize">
+                    {creditError.service.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Credits needed:</span>
+                  <span className="font-medium text-red-600">{creditError.credits_needed}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Your balance:</span>
+                  <span className="font-medium text-gray-800">{creditError.available_credits}</span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => router.push('/dashboard/billing')}
+                  className="w-full py-2.5 bg-gradient-to-r from-[#FA5F55] to-[#FF8C42] text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Get More Credits
+                </button>
+                <button
+                  onClick={() => setCreditError(null)}
+                  className="w-full py-2 text-gray-600 hover:text-gray-800 text-sm"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {error && !creditError && (
           <div className="text-red-600 p-6 max-w-3xl w-full">
             <div className="bg-red-50 rounded-lg border border-red-200 overflow-hidden">
               <div className="bg-red-100 px-4 py-3 border-b border-red-200 flex items-center justify-between">

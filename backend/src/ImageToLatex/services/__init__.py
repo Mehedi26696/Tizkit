@@ -12,18 +12,21 @@ Usage:
 
 from .gemini_service import GeminiService
 from .ocr_service import OCRService
-from .imageTolatex_services import Pix2TexService
+from .imageTolatex_services import Pix2TexService, ImageToLatexService
 
 # Global service instances for easy import
+
 gemini_service = GeminiService()
 ocr_service = OCRService()
 pix2tex_service = Pix2TexService()
+image_to_latex_service = ImageToLatexService()
 
 __all__ = [
     'GeminiService',
     'OCRService',
-    'Pix2TexService',
+    'ImageToLatexService',
     'gemini_service',
     'ocr_service',
     'pix2tex_service',
+    'image_to_latex_service',
 ]

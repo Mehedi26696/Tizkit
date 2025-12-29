@@ -42,9 +42,9 @@ ENHANCED_LATEX_TEMPLATE = r"""
 \vsize=10in
 
 % Enhanced professional styles with improved spacing
-\tikzstyle{startstop} = [ellipse, minimum width=3.0cm, minimum height=1.3cm, draw=black!80, fill=red!15, text centered, font=\small\bfseries, inner sep=4pt]
-\tikzstyle{process} = [rectangle, rounded corners=2pt, minimum width=3.6cm, minimum height=1.3cm, draw=black!80, fill=blue!15, text centered, font=\small, inner sep=5pt]
-\tikzstyle{decision} = [diamond, aspect=2, minimum width=3.2cm, minimum height=1.6cm, draw=black!80, fill=green!15, text centered, font=\small, inner sep=3pt]
+\tikzstyle{startstop} = [ellipse, minimum width=3.5cm, minimum height=1.4cm, draw=black!80, fill=red!15, text centered, font=\small\bfseries, inner sep=5pt]
+\tikzstyle{process} = [rectangle, rounded corners=2pt, minimum width=4.0cm, minimum height=1.4cm, draw=black!80, fill=blue!15, text centered, font=\small, inner sep=6pt]
+\tikzstyle{decision} = [diamond, aspect=2, minimum width=3.5cm, minimum height=1.8cm, draw=black!80, fill=green!15, text centered, font=\small, inner sep=4pt]
 \tikzstyle{arrow} = [thick,-{Stealth[length=3mm]}, draw=black!70]
 
 \begin{document}
@@ -57,7 +57,7 @@ ENHANCED_LATEX_TEMPLATE = r"""
 {% endif %}
 
 \begin{center}
-\begin{tikzpicture}[node distance=3.0cm, auto]
+\begin{tikzpicture}[node distance=4.5cm and 5.0cm, auto, row sep=2.5cm, column sep=3.0cm]
 
 {{ nodes_block }}
 
@@ -154,9 +154,9 @@ class LatexFlowchartGenerator:
 
 \geometry{margin=0.75in, paperwidth=10in, paperheight=10in}
 
-\tikzstyle{startstop} = [ellipse, rounded corners, minimum width=2cm, minimum height=0.8cm, text centered, draw=black, fill=red!30]
-\tikzstyle{process} = [rectangle, minimum width=2cm, minimum height=0.8cm, text centered, draw=black, fill=orange!30]
-\tikzstyle{decision} = [diamond, minimum width=2cm, minimum height=0.8cm, text centered, draw=black, fill=green!30]
+\tikzstyle{startstop} = [ellipse, rounded corners, minimum width=3cm, minimum height=1.2cm, text centered, draw=black, fill=red!30]
+\tikzstyle{process} = [rectangle, minimum width=3.5cm, minimum height=1.2cm, text centered, draw=black, fill=orange!30]
+\tikzstyle{decision} = [diamond, minimum width=3cm, minimum height=1.2cm, text centered, draw=black, fill=green!30]
 \tikzstyle{arrow} = [thick,->,>=stealth]
 
 \begin{document}
@@ -172,7 +172,7 @@ class LatexFlowchartGenerator:
         
         latex_code += r"""
 \begin{center}
-\begin{tikzpicture}[node distance=1.5cm, auto]
+\begin{tikzpicture}[node distance=3.5cm and 4.0cm, auto]
 """
         
         # Check if we need to generate automatic layout
@@ -208,7 +208,7 @@ class LatexFlowchartGenerator:
             else:
                 # Generate automatic vertical layout when positions are invalid
                 x_pos = 0
-                y_pos = -i * 2.2  # Vertical spacing of 2.2 units for better readability
+                y_pos = -i * 3.5  # Vertical spacing of 3.5 units for better readability
             
             latex_code += f"\\node ({node_id}) [{tikz_style}] at ({x_pos:.1f},{y_pos:.1f}) {{{text}}};\n"
         
@@ -426,7 +426,7 @@ class LatexFlowchartGenerator:
         
         # Initialize collision detection system
         self._occupied_positions = set()
-        self._min_separation = 2.5  # Enhanced minimum distance between node centers
+        self._min_separation = 3.5  # Enhanced minimum distance between node centers
         
         # Analyze flowchart structure
         start_nodes = [n for n in nodes if n.type in ['start']]
@@ -439,11 +439,11 @@ class LatexFlowchartGenerator:
         
         # Layout start nodes at top
         for i, node in enumerate(start_nodes):
-            node.x = i * 4.5  # Enhanced horizontal spread  
+            node.x = i * 6.0  # Enhanced horizontal spread for start nodes
             node.y = y_offset
             positioned_nodes.append(node)
         
-        y_offset -= 3.2  # Enhanced vertical spacing
+        y_offset -= 4.5  # Enhanced vertical spacing between levels
         
         # Layout process and decision nodes in sequence
         remaining_nodes = process_nodes + decision_nodes
@@ -455,7 +455,7 @@ class LatexFlowchartGenerator:
             
             while current_level and remaining_nodes:
                 next_level = []
-                level_y = y_offset - (level * 3.2)  # Enhanced level spacing
+                level_y = y_offset - (level * 4.5)  # Enhanced level spacing with more vertical space
                 
                 # Find nodes connected to current level
                 for current_node in current_level:
@@ -475,13 +475,13 @@ class LatexFlowchartGenerator:
                             proposed_x = 0
                         elif len(next_level) == 2 and has_decision_parent:
                             # Enhanced separation for decision branches (Yes/No paths)
-                            proposed_x = -4.0 if i == 0 else 4.0  # 8.0 unit total separation
+                            proposed_x = -5.5 if i == 0 else 5.5  # 11.0 unit total separation
                         elif len(next_level) == 2:
                             # Regular two-node separation
-                            proposed_x = -3.2 if i == 0 else 3.2
+                            proposed_x = -4.5 if i == 0 else 4.5
                         else:
                             # Enhanced spacing for multiple nodes
-                            min_spacing = 3.5  # Enhanced visual spacing
+                            min_spacing = 5.0  # Enhanced visual spacing between nodes
                             total_width = (len(next_level) - 1) * min_spacing
                             proposed_x = -total_width/2 + (i * min_spacing)
                         
@@ -504,15 +504,15 @@ class LatexFlowchartGenerator:
         
         # Position any remaining nodes with collision prevention
         for i, node in enumerate(remaining_nodes):
-            proposed_x = i * 3.5 - (len(remaining_nodes) * 1.75)  # Enhanced spacing
-            proposed_y = y_offset - (level * 3.2)  # Enhanced vertical spacing
+            proposed_x = i * 5.0 - (len(remaining_nodes) * 2.5)  # Enhanced spacing
+            proposed_y = y_offset - (level * 4.5)  # Enhanced vertical spacing
             node.x, node.y = self._get_collision_free_position(proposed_x, proposed_y)
             positioned_nodes.append(node)
         
         # Layout end nodes at bottom with collision prevention
-        end_y = y_offset - ((level + 1) * 3.2)  # Enhanced end node spacing
+        end_y = y_offset - ((level + 1) * 4.5)  # Enhanced end node spacing
         for i, node in enumerate(end_nodes):
-            proposed_x = i * 3.8  # Enhanced spread for end nodes
+            proposed_x = i * 5.5  # Enhanced spread for end nodes
             node.x, node.y = self._get_collision_free_position(proposed_x, end_y)
             positioned_nodes.append(node)
         
@@ -575,17 +575,49 @@ class LatexFlowchartGenerator:
         return True
     
     def _optimize_provided_positions(self, nodes: List[Node]) -> List[Node]:
-        """Optimize provided positions for better TikZ rendering"""
+        """Optimize provided positions for better TikZ rendering with proper spacing"""
+        
+        if not nodes:
+            return nodes
+        
+        # Find the bounding box of provided positions
+        x_coords = [n.x for n in nodes if n.x is not None]
+        y_coords = [n.y for n in nodes if n.y is not None]
+        
+        if not x_coords or not y_coords:
+            return nodes
+        
+        min_x, max_x = min(x_coords), max(x_coords)
+        min_y, max_y = min(y_coords), max(y_coords)
+        
+        # Calculate center of bounding box
+        center_x = (min_x + max_x) / 2
+        center_y = (min_y + max_y) / 2
+        
+        # Calculate scale factor to achieve good spacing (target ~4.5 units between adjacent nodes)
+        # Typical Gemini positions: nodes are ~100-150px apart in pixel coordinates
+        # We want them to be ~4.5 units apart in TikZ coordinates
+        y_range = max_y - min_y if max_y != min_y else 1
+        x_range = max_x - min_x if max_x != min_x else 1
+        
+        # Scale to fit comfortably with proper separation
+        target_y_spacing = 4.5  # Units between nodes vertically
+        num_y_levels = max(1, len(set(y_coords)) - 1)
+        y_scale = (num_y_levels * target_y_spacing) / y_range if y_range > 0 else 1
+        
+        target_x_spacing = 5.0  # Units between nodes horizontally
+        num_x_levels = max(1, len(set(x_coords)) - 1)
+        x_scale = (num_x_levels * target_x_spacing) / x_range if x_range > 0 else 1
         
         for node in nodes:
             if node.x is not None and node.y is not None:
-                # Convert to TikZ coordinate system with proper spacing scale
-                node.x = (node.x - 500) / 100  # Center around origin, better scale for spacing
-                node.y = -(node.y - 300) / 100  # Invert Y axis, center
+                # Center around origin and apply proper scaling
+                node.x = (node.x - center_x) * x_scale
+                node.y = -(node.y - center_y) * y_scale  # Invert Y axis
                 
-                # Clamp to safe ranges while maintaining good separation
-                node.x = max(-8, min(8, node.x))
-                node.y = max(-8, min(8, node.y))
+                # Clamp to safe ranges
+                node.x = max(-15, min(15, node.x))
+                node.y = max(-15, min(15, node.y))
         
         return nodes
     
@@ -612,23 +644,116 @@ class LatexFlowchartGenerator:
         return '\n'.join(lines)
     
     def _generate_edges_block(self, diagram: Diagram) -> str:
-        """Generate the edges block for TikZ with smart arrow placement"""
+        """Generate the edges block for TikZ with smart arrow placement and routing"""
+        
+        # Build a lookup for node positions and types
+        node_lookup = {f"n{node.id}": node for node in diagram.elements}
         
         edges = []
         for node in diagram.elements:
             src_id = f"n{node.id}"
+            src_node = node
             
-            for target_id in node.connections_to:
+            for idx, target_id in enumerate(node.connections_to):
                 dst_id = f"n{target_id}"
+                dst_node = node_lookup.get(dst_id)
                 
-                # Smart edge styling based on node types
-                if node.type == 'decision' and len(node.connections_to) > 1:
-                    # Add labels for decision branches
-                    idx = node.connections_to.index(target_id)
-                    label = "Yes" if idx == 0 else "No"
-                    edge_line = f"\\draw[arrow] ({src_id}) -- node[midway,above] {{{label}}} ({dst_id});"
+                if not dst_node:
+                    # Simple fallback if target not found
+                    edges.append(f"\\draw[arrow] ({src_id}) -- ({dst_id});")
+                    continue
+                
+                # Calculate relative positions for smart routing
+                dx = (dst_node.x or 0) - (src_node.x or 0)
+                dy = (dst_node.y or 0) - (src_node.y or 0)
+                
+                # Determine anchor points based on relative positions
+                if abs(dy) > abs(dx):
+                    # Primarily vertical connection
+                    if dy < 0:
+                        # Target is below source
+                        src_anchor = "south"
+                        dst_anchor = "north"
+                    else:
+                        # Target is above source
+                        src_anchor = "north"
+                        dst_anchor = "south"
                 else:
-                    edge_line = f"\\draw[arrow] ({src_id}) -- ({dst_id});"
+                    # Primarily horizontal connection
+                    if dx > 0:
+                        # Target is to the right
+                        src_anchor = "east"
+                        dst_anchor = "west"
+                    else:
+                        # Target is to the left
+                        src_anchor = "west"
+                        dst_anchor = "east"
+                
+                # Handle decision nodes with branching
+                if node.type == 'decision' and len(node.connections_to) > 1:
+                    label = "Yes" if idx == 0 else "No"
+                    
+                    # For decision branches, use appropriate anchors
+                    if len(node.connections_to) == 2:
+                        if idx == 0:
+                            # Yes branch - typically left or down-left
+                            if dx < -1:
+                                # Target is to the left
+                                edge_line = f"\\draw[arrow] ({src_id}.west) -| node[near start, above] {{{label}}} ({dst_id}.north);"
+                            elif dy < 0:
+                                # Target is below
+                                edge_line = f"\\draw[arrow] ({src_id}.south) -- node[midway, right] {{{label}}} ({dst_id}.north);"
+                            else:
+                                edge_line = f"\\draw[arrow] ({src_id}.west) -- node[midway, above] {{{label}}} ({dst_id}.east);"
+                        else:
+                            # No branch - typically right or down-right
+                            if dx > 1:
+                                # Target is to the right
+                                edge_line = f"\\draw[arrow] ({src_id}.east) -| node[near start, above] {{{label}}} ({dst_id}.north);"
+                            elif dy < 0:
+                                # Target is below
+                                edge_line = f"\\draw[arrow] ({src_id}.south) -- node[midway, left] {{{label}}} ({dst_id}.north);"
+                            else:
+                                edge_line = f"\\draw[arrow] ({src_id}.east) -- node[midway, above] {{{label}}} ({dst_id}.west);"
+                    else:
+                        # More than 2 branches
+                        edge_line = f"\\draw[arrow] ({src_id}.{src_anchor}) -- node[midway, above] {{{label}}} ({dst_id}.{dst_anchor});"
+                
+                # Handle loop-back connections (target is above source)
+                elif dy > 0:
+                    # Looping back up - use curved path to avoid overlapping
+                    if dx > 0:
+                        edge_line = f"\\draw[arrow] ({src_id}.east) to[out=0, in=0, looseness=1.5] ({dst_id}.east);"
+                    elif dx < 0:
+                        edge_line = f"\\draw[arrow] ({src_id}.west) to[out=180, in=180, looseness=1.5] ({dst_id}.west);"
+                    else:
+                        # Same x, going up - curve around
+                        edge_line = f"\\draw[arrow] ({src_id}.east) to[out=0, in=0, looseness=1.2] ({dst_id}.east);"
+                
+                # Handle horizontal connections
+                elif abs(dx) > 2 and abs(dy) < 1:
+                    # Horizontal connection - use direct east/west anchors
+                    if dx > 0:
+                        edge_line = f"\\draw[arrow] ({src_id}.east) -- ({dst_id}.west);"
+                    else:
+                        edge_line = f"\\draw[arrow] ({src_id}.west) -- ({dst_id}.east);"
+                
+                # Handle diagonal connections with orthogonal routing
+                elif abs(dx) > 1 and abs(dy) > 1:
+                    # Diagonal - use orthogonal path for cleaner look
+                    if dy < 0:
+                        # Going down
+                        if dx > 0:
+                            edge_line = f"\\draw[arrow] ({src_id}.south) |- ({dst_id}.west);"
+                        else:
+                            edge_line = f"\\draw[arrow] ({src_id}.south) |- ({dst_id}.east);"
+                    else:
+                        # Going up - curve around
+                        edge_line = f"\\draw[arrow] ({src_id}.{src_anchor}) to[bend right=20] ({dst_id}.{dst_anchor});"
+                
+                # Standard vertical connection
+                else:
+                    edge_line = f"\\draw[arrow] ({src_id}.{src_anchor}) -- ({dst_id}.{dst_anchor});"
                 
                 edges.append(edge_line)
         
