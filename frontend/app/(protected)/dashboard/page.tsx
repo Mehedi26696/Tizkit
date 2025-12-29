@@ -1,11 +1,15 @@
 "use client";
 
 import DashboardHeader from "./components/DashboardHeader";
-import { Plus, Search, Download, Copy, Trash2, ExternalLink, Archive } from "lucide-react";
-import { motion } from "framer-motion";
-import { useState } from "react";
+import { Plus, Search, Download, Copy, Trash2, ExternalLink, Archive, Loader2, FileText } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/context/AuthContext";
+import { getProjects, createProject, deleteProject } from "@/lib/api/projects";
+import type { ProjectListItem, ProjectStatus } from "@/types/project";
+import { toast } from "sonner";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -16,24 +20,102 @@ const itemVariants = {
   }
 };
 
-export default function DashboardPage() {
-    const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
+// Helper function to format relative time
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return 'just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)} weeks ago`;
+  return `${Math.floor(diffInSeconds / 2592000)} months ago`;
+}
 
-  const projects = [
-    { id: 1, title: "Website Redesign", status: "In Progress", owner: "You", lastModified: "7 days ago by You" },
-    { id: 2, title: "Mobile App", status: "Completed", owner: "You", lastModified: "25 days ago by You" },
-    { id: 3, title: "Marketing Campaign", status: "Planning", owner: "You", lastModified: "a month ago by You" },
-    { id: 4, title: "API Integration", status: "In Progress", owner: "You", lastModified: "a month ago by You" },
-    { id: 5, title: "Database Migration", status: "Planning", owner: "You", lastModified: "a month ago by You" },
-  ];
+// Helper function to format status display
+function formatStatus(status: ProjectStatus): { label: string; color: string } {
+  const statusMap: Record<ProjectStatus, { label: string; color: string }> = {
+    draft: { label: 'Draft', color: 'bg-gray-100 text-gray-700' },
+    in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-700' },
+    completed: { label: 'Completed', color: 'bg-green-100 text-green-700' },
+    archived: { label: 'Archived', color: 'bg-orange-100 text-orange-700' },
+  };
+  return statusMap[status] || { label: status, color: 'bg-gray-100 text-gray-700' };
+}
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const displayName = user?.full_name || user?.username || 'User';
+
+  // Fetch projects on mount
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getProjects();
+      setProjects(data);
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+      toast.error('Failed to load projects');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateProject = async () => {
+    setIsCreating(true);
+    try {
+      const newProject = await createProject({
+        title: 'Untitled Project',
+        status: 'draft',
+        latex_content: '\\documentclass{article}\n\\begin{document}\n\nHello, World!\n\n\\end{document}'
+      });
+      toast.success('Project created!');
+      router.push(`/projects/${newProject.id}`);
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      toast.error('Failed to create project');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    try {
+      await deleteProject(projectId);
+      setProjects(prev => prev.filter(p => p.id !== projectId));
+      setSelectedProjects(prev => prev.filter(id => id !== projectId));
+      toast.success('Project deleted');
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      toast.error('Failed to delete project');
+    }
+  };
+
+  const handleOpenProject = (projectId: string) => {
+    router.push(`/projects/${projectId}`);
+  };
 
   const filteredProjects = projects.filter(project =>
-    project.title.toLowerCase().includes(searchQuery.toLowerCase())
+    project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    project.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const toggleSelectProject = (id: number) => {
+  const toggleSelectProject = (id: string) => {
     setSelectedProjects(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
     );
@@ -60,12 +142,12 @@ export default function DashboardPage() {
           animate="visible"
         >
           <p className="text-xl text-[#1f1e24]/70">Welcome</p>
-          <h1 className="text-4xl font-bold text-[#1f1e24]">Abs</h1>
+          <h1 className="text-4xl font-bold text-[#1f1e24]">{displayName}</h1>
         </motion.div>
 
         {/* Projects Section */}
         <motion.div 
-          className="bg-gradient-to-br from-[#f9f4eb] via-white to-[#FA5F55]/10 rounded-xl shadow-sm border-2 border-[#1f1e24]/20 p-6"
+          className="bg-linear-to-br from-[#f9f4eb] via-white to-[#FA5F55]/10 rounded-xl shadow-sm border-2 border-[#1f1e24]/20 p-6"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
@@ -75,20 +157,24 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-2xl font-semibold text-[#1f1e24]">Your Projects</h2>
-                <p className="text-sm text-[#1f1e24]/60 mt-1">Manage and track your active projects</p>
+                <p className="text-sm text-[#1f1e24]/60 mt-1">
+                  {projects.length} project{projects.length !== 1 ? 's' : ''} total
+                </p>
               </div>
               <motion.button 
-  className="flex items-center gap-2 px-4 py-2.5 bg-[#FA5F55] text-white rounded-lg hover:bg-[#FA5F55]/90 transition-all shadow-sm font-medium"
-  whileHover={{ scale: 1.05 }}
-  whileTap={{ scale: 0.95 }}
-  onClick={() => {
-    const id = Math.random().toString(36).substring(2, 10);
-    router.push(`/projects/${id}/edit`);  // This route matches our structure!
-  }}
->
-  <Plus className="w-4 h-4" />
-  New Project
-</motion.button>
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#FA5F55] text-white rounded-lg hover:bg-[#FA5F55]/90 transition-all shadow-sm font-medium disabled:opacity-50"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleCreateProject}
+                disabled={isCreating}
+              >
+                {isCreating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                New Project
+              </motion.button>
             </div>
 
             {/* Search Bar */}
@@ -104,121 +190,156 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Table View */}
-          <div className="overflow-x-auto -mx-6 -mb-6">
-            <table className="w-full">
-              <thead className="bg-[#f9f4eb]/40 border-y-2 border-[#1f1e24]/20">
-                <tr>
-                  <th className="px-6 py-4 text-left w-12">
-                    <input
-                      type="checkbox"
-                      checked={selectedProjects.length === filteredProjects.length && filteredProjects.length > 0}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-2 border-[#1f1e24]/30 text-[#FA5F55] focus:ring-[#FA5F55] cursor-pointer"
-                    />
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-[#1f1e24]">
-                    Title
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-[#1f1e24]">
-                    Owner
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-[#1f1e24]">
-                    <div className="flex items-center gap-1">
-                      Last modified
-                      <span className="text-xs">↓</span>
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-[#1f1e24]">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#1f1e24]/10">
-                {filteredProjects.map((project, index) => (
-                  <motion.tr
-                    key={project.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className={cn(
-                      "hover:bg-[#f9f4eb]/50 transition-colors group",
-                      selectedProjects.includes(project.id) && "bg-[#FA5F55]/5"
-                    )}
-                  >
-                    <td className="px-6 py-4">
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="py-12 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-[#FA5F55]" />
+            </div>
+          ) : filteredProjects.length === 0 ? (
+            /* Empty State */
+            <div className="py-12 text-center">
+              <FileText className="w-16 h-16 mx-auto mb-4 text-[#1f1e24]/20" />
+              <h3 className="text-lg font-medium text-[#1f1e24] mb-2">
+                {searchQuery ? 'No projects found' : 'No projects yet'}
+              </h3>
+              <p className="text-[#1f1e24]/50 mb-4">
+                {searchQuery ? 'Try a different search term' : 'Create your first project to get started'}
+              </p>
+              {!searchQuery && (
+                <motion.button
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#FA5F55] text-white rounded-lg hover:bg-[#FA5F55]/90 transition-all"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleCreateProject}
+                  disabled={isCreating}
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Project
+                </motion.button>
+              )}
+            </div>
+          ) : (
+            /* Table View */
+            <div className="overflow-x-auto -mx-6 -mb-6">
+              <table className="w-full">
+                <thead className="bg-[#f9f4eb]/40 border-y-2 border-[#1f1e24]/20">
+                  <tr>
+                    <th className="px-6 py-4 text-left w-12">
                       <input
                         type="checkbox"
-                        checked={selectedProjects.includes(project.id)}
-                        onChange={() => toggleSelectProject(project.id)}
+                        checked={selectedProjects.length === filteredProjects.length && filteredProjects.length > 0}
+                        onChange={toggleSelectAll}
                         className="w-4 h-4 rounded border-2 border-[#1f1e24]/30 text-[#FA5F55] focus:ring-[#FA5F55] cursor-pointer"
                       />
-                    </td>
-                    <td className="px-6 py-4">
-                      <button className="text-[#1f1e24] font-medium hover:text-[#FA5F55] transition-colors text-left text-lg">
-                        {project.title}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-[#1f1e24]/70">{project.owner}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-[#1f1e24]/70">{project.lastModified}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1 group-hover:opacity-100 transition-opacity">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          className="p-2 hover:bg-[#FA5F55]/10 rounded-lg transition-colors"
-                          title="Copy"
-                        >
-                          <Copy className="w-4 h-4 text-[#1f1e24]/70" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          className="p-2 hover:bg-[#FA5F55]/10 rounded-lg transition-colors"
-                          title="Download"
-                        >
-                          <Download className="w-4 h-4 text-[#1f1e24]/70" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          className="p-2 hover:bg-[#FA5F55]/10 rounded-lg transition-colors"
-                          title="Archive"
-                        >
-                          <Archive className="w-4 h-4 text-[#1f1e24]/70" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          className="p-2 hover:bg-[#FA5F55]/10 rounded-lg transition-colors"
-                          title="Open"
-                        >
-                          <ExternalLink className="w-4 h-4 text-[#1f1e24]/70" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </motion.button>
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#1f1e24]">
+                      Title
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#1f1e24]">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#1f1e24]">
+                      <div className="flex items-center gap-1">
+                        Last modified
+                        <span className="text-xs">↓</span>
                       </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Empty State */}
-          {filteredProjects.length === 0 && (
-            <div className="py-12 text-center">
-              <p className="text-[#1f1e24]/50">No projects found</p>
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#1f1e24]">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1f1e24]/10">
+                  {filteredProjects.map((project, index) => {
+                    const statusInfo = formatStatus(project.status);
+                    return (
+                      <motion.tr
+                        key={project.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className={cn(
+                          "hover:bg-[#f9f4eb]/50 transition-colors group",
+                          selectedProjects.includes(project.id) && "bg-[#FA5F55]/5"
+                        )}
+                      >
+                        <td className="px-6 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedProjects.includes(project.id)}
+                            onChange={() => toggleSelectProject(project.id)}
+                            className="w-4 h-4 rounded border-2 border-[#1f1e24]/30 text-[#FA5F55] focus:ring-[#FA5F55] cursor-pointer"
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <button 
+                            onClick={() => handleOpenProject(project.id)}
+                            className="text-[#1f1e24] font-medium hover:text-[#FA5F55] transition-colors text-left text-lg"
+                          >
+                            {project.title}
+                          </button>
+                          {project.description && (
+                            <p className="text-sm text-[#1f1e24]/50 truncate max-w-md">
+                              {project.description}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={cn(
+                            "inline-flex px-2.5 py-1 rounded-full text-xs font-medium",
+                            statusInfo.color
+                          )}>
+                            {statusInfo.label}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-[#1f1e24]/70">
+                            {formatRelativeTime(project.updated_at)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1 group-hover:opacity-100 transition-opacity">
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              className="p-2 hover:bg-[#FA5F55]/10 rounded-lg transition-colors"
+                              title="Open"
+                              onClick={() => handleOpenProject(project.id)}
+                            >
+                              <ExternalLink className="w-4 h-4 text-[#1f1e24]/70" />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              className="p-2 hover:bg-[#FA5F55]/10 rounded-lg transition-colors"
+                              title="Download"
+                            >
+                              <Download className="w-4 h-4 text-[#1f1e24]/70" />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              className="p-2 hover:bg-[#FA5F55]/10 rounded-lg transition-colors"
+                              title="Duplicate"
+                            >
+                              <Copy className="w-4 h-4 text-[#1f1e24]/70" />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete"
+                              onClick={() => setDeleteConfirm(project.id)}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </motion.button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </motion.div>
@@ -228,13 +349,61 @@ export default function DashboardPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 px-4 py-3 bg-[#FA5F55]/10 border-2 border-[#FA5F55]/40 rounded-lg"
+            className="mt-4 px-4 py-3 bg-[#FA5F55]/10 border-2 border-[#FA5F55]/40 rounded-lg flex items-center justify-between"
           >
             <p className="text-sm text-[#1f1e24]">
               <span className="font-semibold">{selectedProjects.length}</span> project{selectedProjects.length > 1 ? 's' : ''} selected
             </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedProjects([])}
+                className="text-sm text-[#1f1e24]/70 hover:text-[#1f1e24]"
+              >
+                Clear selection
+              </button>
+            </div>
           </motion.div>
         )}
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {deleteConfirm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+              onClick={() => setDeleteConfirm(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-xl font-semibold text-[#1f1e24] mb-2">Delete Project?</h3>
+                <p className="text-[#1f1e24]/70 mb-6">
+                  This action cannot be undone. All project files and content will be permanently deleted.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setDeleteConfirm(null)}
+                    className="px-4 py-2 text-[#1f1e24] hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProject(deleteConfirm)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

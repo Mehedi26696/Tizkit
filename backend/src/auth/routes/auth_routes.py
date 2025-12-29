@@ -3,8 +3,8 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from datetime import timedelta
 from sqlmodel import Session, select
 from src.utils.database import get_session
-from src.auth.schemas.user_schemas import UserCreate, User, Token
-from src.auth.services.user_service import create_user, authenticate_user, get_user_by_email
+from src.auth.schemas.user_schemas import UserCreate, User, Token, UserUpdate, PasswordChange
+from src.auth.services.user_service import create_user, authenticate_user, get_user_by_email, update_user, change_password, verify_password
 from src.auth.services.auth_service import create_access_token, decode_access_token
 from src.config import settings
 
@@ -56,4 +56,47 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
 @auth_router.get("/me", response_model=User)
 def read_me(current_user = Depends(get_current_user)):
     return current_user
+
+
+@auth_router.put("/me", response_model=User)
+def update_me(
+    user_update: UserUpdate,
+    current_user = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Update current user's profile."""
+    # Check if username is being changed and if it's already taken
+    if user_update.username and user_update.username != current_user.username:
+        existing = session.exec(
+            select(current_user.__class__).where(current_user.__class__.username == user_update.username)
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already taken")
+    
+    updated_user = update_user(
+        session, 
+        current_user, 
+        full_name=user_update.full_name,
+        username=user_update.username
+    )
+    return updated_user
+
+
+@auth_router.post("/me/change-password")
+def change_my_password(
+    password_data: PasswordChange,
+    current_user = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """Change current user's password."""
+    # Verify current password
+    if not verify_password(password_data.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Validate new password
+    if len(password_data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    
+    change_password(session, current_user, password_data.new_password)
+    return {"message": "Password changed successfully"}
  

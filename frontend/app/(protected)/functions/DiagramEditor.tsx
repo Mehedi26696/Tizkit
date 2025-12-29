@@ -30,11 +30,16 @@ interface Connection {
 
 interface DiagramEditorProps {
   onDiagramChange: (diagramData: any) => void;
+  initialData?: {
+    nodes?: Node[];
+    connections?: Connection[];
+  } | null;
 }
 
-const DiagramEditor: React.FC<DiagramEditorProps> = ({ onDiagramChange }) => {
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [connections, setConnections] = useState<Connection[]>([]);
+const DiagramEditor: React.FC<DiagramEditorProps> = ({ onDiagramChange, initialData }) => {
+  const [nodes, setNodes] = useState<Node[]>(() => initialData?.nodes ?? []);
+  const [connections, setConnections] = useState<Connection[]>(() => initialData?.connections ?? []);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
   const [nodeType, setNodeType] = useState<'rectangle' | 'circle' | 'diamond'>('rectangle');
@@ -127,6 +132,15 @@ const DiagramEditor: React.FC<DiagramEditorProps> = ({ onDiagramChange }) => {
       }
     }
   };
+
+  // Initialize from initial data when it arrives
+  useEffect(() => {
+    if (initialData && !isInitialized) {
+      if (initialData.nodes) setNodes(initialData.nodes);
+      if (initialData.connections) setConnections(initialData.connections);
+      setIsInitialized(true);
+    }
+  }, [initialData, isInitialized]);
 
   // Initial trigger when component mounts
   useEffect(() => {

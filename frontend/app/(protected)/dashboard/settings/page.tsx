@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { User, Bell, Lock, Palette, Globe, CreditCard, Shield, Download } from 'lucide-react';
+import { User, Bell, Lock, Palette, Globe, CreditCard, Shield, Download, ChevronRight } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/lib/context/AuthContext';
+import { toast } from 'sonner';
+import Link from 'next/link';
 
 const fadeInUpVariants = {
   initial: { opacity: 0, y: 20 },
@@ -13,6 +16,22 @@ const fadeInUpVariants = {
 };
 
 export default function SettingsPage() {
+  const { user, updateProfile, changePassword, isLoading: authLoading } = useAuth();
+  
+  const [profileForm, setProfileForm] = useState({
+    full_name: '',
+    username: '',
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+
   const [notifications, setNotifications] = useState({
     email: true,
     push: false,
@@ -22,6 +41,81 @@ export default function SettingsPage() {
 
   const [theme, setTheme] = useState('light');
   const [language, setLanguage] = useState('en');
+  const [activeSection, setActiveSection] = useState('profile');
+
+  // Scroll to section function
+  const scrollToSection = (sectionId: string) => {
+    setActiveSection(sectionId);
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Initialize form with user data
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        full_name: user.full_name || '',
+        username: user.username || '',
+      });
+    }
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    if (!profileForm.username.trim()) {
+      toast.error('Username is required');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      await updateProfile({
+        full_name: profileForm.full_name || undefined,
+        username: profileForm.username,
+      });
+      toast.success('Profile updated successfully');
+    } catch (error: any) {
+      const message = error.response?.data?.detail || 'Failed to update profile';
+      toast.error(message);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (passwordForm.new_password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await changePassword({
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password,
+      });
+      toast.success('Password changed successfully');
+      setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+      setShowPasswordModal(false);
+    } catch (error: any) {
+      const message = error.response?.data?.detail || 'Failed to change password';
+      toast.error(message);
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const getInitials = () => {
+    if (user?.full_name) {
+      return user.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    return user?.email?.slice(0, 2).toUpperCase() || 'U';
+  };
 
   const settingsSections = [
     {
@@ -29,12 +123,6 @@ export default function SettingsPage() {
       title: 'Profile Settings',
       icon: User,
       description: 'Manage your personal information',
-      fields: [
-        { label: 'Full Name', value: 'John Doe', type: 'text' },
-        { label: 'Email', value: 'john.doe@example.com', type: 'email' },
-        { label: 'Username', value: '@johndoe', type: 'text' },
-        { label: 'Bio', value: 'LaTeX enthusiast and researcher', type: 'textarea' },
-      ],
     },
     {
       id: 'notifications',
@@ -65,6 +153,7 @@ export default function SettingsPage() {
       title: 'Billing & Subscription',
       icon: CreditCard,
       description: 'Manage your plan and payment',
+      href: '/dashboard/billing',
     },
   ];
 
@@ -94,14 +183,38 @@ export default function SettingsPage() {
               <nav className="space-y-2">
                 {settingsSections.map((section, index) => {
                   const Icon = section.icon;
+                  
+                  // If section has href, render as Link
+                  if (section.href) {
+                    return (
+                      <Link key={section.id} href={section.href}>
+                        <motion.div
+                          className={cn(
+                            "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all text-left",
+                            "hover:bg-[#f9f4eb]/50 text-[#1f1e24]/70 hover:text-[#1f1e24]"
+                          )}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Icon className="w-5 h-5" />
+                            <span className="font-medium">{section.title}</span>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-[#FA5F55]" />
+                        </motion.div>
+                      </Link>
+                    );
+                  }
+                  
                   return (
                     <motion.button
                       key={section.id}
+                      onClick={() => scrollToSection(section.id)}
                       className={cn(
                         "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left",
-                        index === 0
+                        activeSection === section.id
                           ? "bg-[#FA5F55]/10 text-[#FA5F55] border-2 border-[#FA5F55]/40"
-                          : "hover:bg-[#f9f4eb]/50 text-[#1f1e24]/70 hover:text-[#1f1e24]"
+                          : "hover:bg-[#f9f4eb]/50 text-[#1f1e24]/70 hover:text-[#1f1e24] border-2 border-transparent"
                       )}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -119,7 +232,8 @@ export default function SettingsPage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Profile Settings */}
             <motion.div
-              className="bg-white rounded-2xl border-2 border-[#FA5F55]/20 p-6"
+              id="profile"
+              className="bg-white rounded-2xl border-2 border-[#FA5F55]/20 p-6 scroll-mt-24"
               variants={fadeInUpVariants}
               initial="initial"
               animate="animate"
@@ -142,7 +256,7 @@ export default function SettingsPage() {
                 </label>
                 <div className="flex items-center gap-4">
                   <div className="w-20 h-20 bg-[#FA5F55] rounded-full flex items-center justify-center text-white font-bold text-2xl">
-                    JD
+                    {getInitials()}
                   </div>
                   <div className="flex gap-2">
                     <Button className="bg-[#FA5F55] hover:bg-[#FA5F55]/90 text-white">
@@ -163,7 +277,9 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    defaultValue="John Doe"
+                    value={profileForm.full_name}
+                    onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
+                    placeholder="Enter your full name"
                     className="w-full px-4 py-3 rounded-lg border-2 border-[#1f1e24]/20 focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition-all outline-none"
                   />
                 </div>
@@ -173,9 +289,11 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="email"
-                    defaultValue="john.doe@example.com"
-                    className="w-full px-4 py-3 rounded-lg border-2 border-[#1f1e24]/20 focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition-all outline-none"
+                    value={user?.email || ''}
+                    disabled
+                    className="w-full px-4 py-3 rounded-lg border-2 border-[#1f1e24]/20 bg-gray-50 text-gray-500 cursor-not-allowed"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#1f1e24] mb-2">
@@ -183,27 +301,33 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    defaultValue="@johndoe"
+                    value={profileForm.username}
+                    onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
                     className="w-full px-4 py-3 rounded-lg border-2 border-[#1f1e24]/20 focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition-all outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#1f1e24] mb-2">
-                    Bio
-                  </label>
-                  <textarea
-                    rows={3}
-                    defaultValue="LaTeX enthusiast and researcher"
-                    className="w-full px-4 py-3 rounded-lg border-2 border-[#1f1e24]/20 focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition-all outline-none resize-none"
                   />
                 </div>
               </div>
 
               <div className="mt-6 flex gap-3">
-                <Button className="bg-[#FA5F55] hover:bg-[#FA5F55]/90 text-white">
-                  Save Changes
+                <Button 
+                  className="bg-[#FA5F55] hover:bg-[#FA5F55]/90 text-white"
+                  onClick={handleSaveProfile}
+                  disabled={isSavingProfile}
+                >
+                  {isSavingProfile ? 'Saving...' : 'Save Changes'}
                 </Button>
-                <Button variant="outline" className="border-[#FA5F55]/40 text-[#FA5F55] hover:bg-[#FA5F55]/10">
+                <Button 
+                  variant="outline" 
+                  className="border-[#FA5F55]/40 text-[#FA5F55] hover:bg-[#FA5F55]/10"
+                  onClick={() => {
+                    if (user) {
+                      setProfileForm({
+                        full_name: user.full_name || '',
+                        username: user.username || '',
+                      });
+                    }
+                  }}
+                >
                   Cancel
                 </Button>
               </div>
@@ -211,7 +335,8 @@ export default function SettingsPage() {
 
             {/* Notifications */}
             <motion.div
-              className="bg-white rounded-2xl border-2 border-[#FA5F55]/20 p-6"
+              id="notifications"
+              className="bg-white rounded-2xl border-2 border-[#FA5F55]/20 p-6 scroll-mt-24"
               variants={fadeInUpVariants}
               initial="initial"
               animate="animate"
@@ -273,7 +398,8 @@ export default function SettingsPage() {
 
             {/* Security */}
             <motion.div
-              className="bg-white rounded-2xl border-2 border-[#FA5F55]/20 p-6"
+              id="security"
+              className="bg-white rounded-2xl border-2 border-[#FA5F55]/20 p-6 scroll-mt-24"
               variants={fadeInUpVariants}
               initial="initial"
               animate="animate"
@@ -290,15 +416,79 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="p-4 bg-[#f9f4eb]/50 rounded-xl border border-[#FA5F55]/20">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium text-[#1f1e24]">Password</p>
-                    <Button variant="outline" size="sm" className="border-[#FA5F55]/40 text-[#FA5F55] hover:bg-[#FA5F55]/10">
-                      Change
-                    </Button>
+                {/* Password Change Section */}
+                {!showPasswordModal ? (
+                  <div className="p-4 bg-[#f9f4eb]/50 rounded-xl border border-[#FA5F55]/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-medium text-[#1f1e24]">Password</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-[#FA5F55]/40 text-[#FA5F55] hover:bg-[#FA5F55]/10"
+                        onClick={() => setShowPasswordModal(true)}
+                      >
+                        Change
+                      </Button>
+                    </div>
+                    <p className="text-sm text-[#1f1e24]/60">Secure your account with a strong password</p>
                   </div>
-                  <p className="text-sm text-[#1f1e24]/60">Last changed 3 months ago</p>
-                </div>
+                ) : (
+                  <div className="p-4 bg-[#f9f4eb]/50 rounded-xl border border-[#FA5F55]/20 space-y-4">
+                    <p className="font-medium text-[#1f1e24]">Change Password</p>
+                    <div>
+                      <label className="block text-sm font-medium text-[#1f1e24] mb-2">
+                        Current Password
+                      </label>
+                      <input
+                        type="password"
+                        value={passwordForm.current_password}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
+                        className="w-full px-4 py-3 rounded-lg border-2 border-[#1f1e24]/20 focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition-all outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#1f1e24] mb-2">
+                        New Password
+                      </label>
+                      <input
+                        type="password"
+                        value={passwordForm.new_password}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+                        className="w-full px-4 py-3 rounded-lg border-2 border-[#1f1e24]/20 focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition-all outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#1f1e24] mb-2">
+                        Confirm New Password
+                      </label>
+                      <input
+                        type="password"
+                        value={passwordForm.confirm_password}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+                        className="w-full px-4 py-3 rounded-lg border-2 border-[#1f1e24]/20 focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition-all outline-none"
+                      />
+                    </div>
+                    <div className="flex gap-3">
+                      <Button 
+                        className="bg-[#FA5F55] hover:bg-[#FA5F55]/90 text-white"
+                        onClick={handleChangePassword}
+                        disabled={isChangingPassword}
+                      >
+                        {isChangingPassword ? 'Changing...' : 'Change Password'}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="border-[#FA5F55]/40 text-[#FA5F55] hover:bg-[#FA5F55]/10"
+                        onClick={() => {
+                          setShowPasswordModal(false);
+                          setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="p-4 bg-[#f9f4eb]/50 rounded-xl border border-[#FA5F55]/20">
                   <div className="flex items-center justify-between mb-2">
@@ -317,14 +507,107 @@ export default function SettingsPage() {
                       Manage
                     </Button>
                   </div>
-                  <p className="text-sm text-[#1f1e24]/60">2 active sessions</p>
+                  <p className="text-sm text-[#1f1e24]/60">1 active session</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Appearance */}
+            <motion.div
+              id="appearance"
+              className="bg-white rounded-2xl border-2 border-[#FA5F55]/20 p-6 scroll-mt-24"
+              variants={fadeInUpVariants}
+              initial="initial"
+              animate="animate"
+              transition={{ duration: 0.5, delay: 0.35 }}
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-[#FA5F55]/10 rounded-xl flex items-center justify-center">
+                  <Palette className="w-5 h-5 text-[#FA5F55]" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-semibold text-[#1f1e24]">Appearance</h2>
+                  <p className="text-sm text-[#1f1e24]/60">Customize your interface</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#1f1e24] mb-3">Theme</label>
+                  <div className="flex gap-3">
+                    {['light', 'dark', 'system'].map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setTheme(t)}
+                        className={cn(
+                          "flex-1 py-3 px-4 rounded-xl border-2 transition-all font-medium capitalize",
+                          theme === t
+                            ? "border-[#FA5F55] bg-[#FA5F55]/10 text-[#FA5F55]"
+                            : "border-[#1f1e24]/20 hover:border-[#FA5F55]/40 text-[#1f1e24]/70"
+                        )}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Language & Region */}
+            <motion.div
+              id="language"
+              className="bg-white rounded-2xl border-2 border-[#FA5F55]/20 p-6 scroll-mt-24"
+              variants={fadeInUpVariants}
+              initial="initial"
+              animate="animate"
+              transition={{ duration: 0.5, delay: 0.38 }}
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-[#FA5F55]/10 rounded-xl flex items-center justify-center">
+                  <Globe className="w-5 h-5 text-[#FA5F55]" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-semibold text-[#1f1e24]">Language & Region</h2>
+                  <p className="text-sm text-[#1f1e24]/60">Set your language preferences</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#1f1e24] mb-2">Language</label>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-[#1f1e24]/20 focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition-all outline-none bg-white"
+                  >
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                    <option value="de">Deutsch</option>
+                    <option value="zh">中文</option>
+                    <option value="ja">日本語</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#1f1e24] mb-2">Timezone</label>
+                  <select
+                    className="w-full px-4 py-3 rounded-lg border-2 border-[#1f1e24]/20 focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition-all outline-none bg-white"
+                  >
+                    <option value="UTC">UTC (Coordinated Universal Time)</option>
+                    <option value="EST">EST (Eastern Standard Time)</option>
+                    <option value="PST">PST (Pacific Standard Time)</option>
+                    <option value="GMT">GMT (Greenwich Mean Time)</option>
+                    <option value="CET">CET (Central European Time)</option>
+                  </select>
                 </div>
               </div>
             </motion.div>
 
             {/* Danger Zone */}
             <motion.div
-              className="bg-red-50 rounded-2xl border-2 border-red-200 p-6"
+              id="danger"
+              className="bg-red-50 rounded-2xl border-2 border-red-200 p-6 scroll-mt-24"
               variants={fadeInUpVariants}
               initial="initial"
               animate="animate"

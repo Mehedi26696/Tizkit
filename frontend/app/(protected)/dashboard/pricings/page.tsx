@@ -1,10 +1,10 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Check, Minus, ArrowLeft } from 'lucide-react';
+import { Check, Minus, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
@@ -14,10 +14,14 @@ import {
   AccordionContent,
   AccordionItem,
 } from '@/components/ui/accordion';
+import { getCredits, createSubscription } from '@/lib/api/billing';
+import type { CreditsInfo, PlanType } from '@/types/billing';
+import { toast } from 'sonner';
 
 const plans = [
   {
     name: 'Free',
+    planType: 'FREE' as PlanType,
     price: '$0',
     description: "Try Tizkit's core features with AI assist and live preview",
     features: [
@@ -32,10 +36,10 @@ const plans = [
     ],
     buttonText: 'Current Plan',
     buttonVariant: 'outline' as const,
-    isCurrent: true,
   },
   {
     name: 'Pro',
+    planType: 'PRO' as PlanType,
     price: '$9',
     description: 'For power users and teams who need constant access',
     features: [
@@ -50,10 +54,10 @@ const plans = [
     ],
     buttonText: 'Upgrade to Pro',
     buttonVariant: 'default' as const,
-    isCurrent: false,
   },
   {
     name: 'Team',
+    planType: 'TEAM' as PlanType,
     price: '$15',
     description: 'Shared workspace, project permissions, analytics',
     features: [
@@ -68,7 +72,6 @@ const plans = [
     ],
     buttonText: 'Contact Sales',
     buttonVariant: 'default' as const,
-    isCurrent: false,
   },
 ];
 
@@ -112,6 +115,52 @@ const fadeInUpVariants = {
 
 export default function PricingsPage() {
   const router = useRouter();
+  const [creditsInfo, setCreditsInfo] = useState<CreditsInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [upgradingPlan, setUpgradingPlan] = useState<PlanType | null>(null);
+
+  useEffect(() => {
+    const fetchCredits = async () => {
+      try {
+        const credits = await getCredits();
+        setCreditsInfo(credits);
+      } catch (error) {
+        console.error('Failed to fetch credits:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCredits();
+  }, []);
+
+  const handleUpgrade = async (planType: PlanType) => {
+    if (planType === 'FREE') return;
+    if (planType === 'TEAM') {
+      toast.info('Please contact sales for Team plans');
+      return;
+    }
+    
+    setUpgradingPlan(planType);
+    try {
+      const result = await createSubscription({
+        plan_type: planType,
+        billing_period: 'monthly'
+      });
+      
+      if (result.success) {
+        toast.success(`Successfully upgraded to ${planType} plan!`);
+        // Refresh credits info
+        const credits = await getCredits();
+        setCreditsInfo(credits);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to upgrade plan');
+    } finally {
+      setUpgradingPlan(null);
+    }
+  };
+
+  const currentPlanType = creditsInfo?.plan_type || 'FREE';
 
   return (
     <div className="ml-64 min-h-screen bg-[#f9f4eb]/50 p-8">
@@ -140,7 +189,11 @@ export default function PricingsPage() {
           </motion.div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3 max-w-7xl mx-auto">
-            {plans.map((plan, index) => (
+            {plans.map((plan, index) => {
+              const isCurrent = plan.planType === currentPlanType;
+              const isUpgrading = upgradingPlan === plan.planType;
+              
+              return (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 30, scale: 0.95 }}
@@ -153,12 +206,12 @@ export default function PricingsPage() {
                 }}
                 className={cn(
                   "rounded-3xl bg-white border-2 p-8 flex flex-col transition-all duration-300",
-                  plan.isCurrent 
+                  isCurrent 
                     ? "border-[#FA5F55] shadow-lg" 
                     : "border-gray-200 hover:border-[#FA5F55]/40 hover:shadow-md"
                 )}
               >
-                {plan.isCurrent && (
+                {isCurrent && (
                   <div className="mb-4">
                     <span className="inline-block px-3 py-1 text-xs font-medium bg-[#FA5F55] text-white rounded-full">
                       Current Plan
@@ -188,16 +241,26 @@ export default function PricingsPage() {
                 <div className="mb-6">
                   <Button
                     size="lg"
-                    disabled={plan.isCurrent}
+                    disabled={isCurrent || isUpgrading || isLoading}
+                    onClick={() => handleUpgrade(plan.planType)}
                     className={cn(
                       "w-full rounded-full text-lg font-medium py-6 transition-all duration-300",
-                      plan.buttonVariant === 'default'
+                      !isCurrent && plan.buttonVariant === 'default'
                         ? "bg-[#FA5F55] hover:bg-[#FA5F55]/90 text-white shadow-md hover:shadow-lg hover:scale-[1.02]"
                         : "bg-white hover:bg-[#FA5F55]/10 text-[#FA5F55] border-2 border-[#FA5F55]/40 hover:border-[#FA5F55]/80",
-                      plan.isCurrent && "opacity-50 cursor-not-allowed"
+                      (isCurrent || isLoading) && "opacity-50 cursor-not-allowed"
                     )}
                   >
-                    {plan.buttonText}
+                    {isUpgrading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Upgrading...
+                      </>
+                    ) : isCurrent ? (
+                      'Current Plan'
+                    ) : (
+                      plan.buttonText
+                    )}
                   </Button>
                 </div>
 
@@ -220,7 +283,7 @@ export default function PricingsPage() {
                   ))}
                 </ul>
               </motion.div>
-            ))}
+            );})}
           </div>
         </motion.div>
 

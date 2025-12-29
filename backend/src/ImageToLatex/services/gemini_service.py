@@ -177,6 +177,51 @@ Instructions:
         
         return await self.call_api(prompt, error_message)
 
+    async def fix_latex_with_error(self, latex_code: str, error_message: str) -> Dict[str, Any]:
+        """Fix LaTeX code based on the compilation error using Gemini AI"""
+        prompt = f"""You are a LaTeX expert. The following LaTeX code failed to compile with the error shown below. 
+Fix the code to make it compile successfully.
+
+ERROR MESSAGE:
+{error_message}
+
+Instructions:
+- Analyze the error message to understand what went wrong
+- Fix the specific issue mentioned in the error
+- Remove or replace any problematic packages or commands
+- If the error is about missing packages, either add them or remove the commands that need them
+- For "Couldn't load requested language" errors in listings package, remove the language option or replace with a supported language
+- Ensure the output is a complete, compilable LaTeX document
+- Return ONLY the fixed LaTeX code, no explanations or markdown code blocks
+
+LATEX CODE TO FIX:
+"""
+        result = await self.call_api(prompt, latex_code)
+        
+        # Post-process: Clean up the response
+        if result.get("success") and result.get("data") and result["data"].get("content"):
+            content = result["data"]["content"].strip()
+            # Remove code block markers
+            content = re.sub(r"^```(?:latex|text)?\s*", "", content)
+            content = re.sub(r"```$", "", content)
+            content = content.strip()
+            
+            # Ensure it has document structure
+            if "\\documentclass" not in content:
+                wrapped = (
+                    "\\documentclass[12pt]{article}\n"
+                    "\\usepackage[utf8]{inputenc}\n"
+                    "\\usepackage{amsmath,amssymb,amsfonts}\n"
+                    "\\begin{document}\n"
+                    f"{content}\n"
+                    "\\end{document}"
+                )
+                result["data"]["content"] = wrapped
+            else:
+                result["data"]["content"] = content
+        
+        return result
+
     async def extract_image_content(self, image_bytes: bytes, filename: str = "image.png") -> Dict[str, Any]:
         """
         Extract content (text, math, objects) from an image using Gemini vision model.

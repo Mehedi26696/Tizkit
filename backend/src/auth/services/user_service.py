@@ -53,3 +53,24 @@ def authenticate_user(session, email: str, password: str) -> Optional[User]:
     return user
 
 
+def update_user(session, user: User, *, full_name: Optional[str] = None, username: Optional[str] = None) -> User:
+    """Update user profile fields."""
+    if full_name is not None:
+        user.full_name = full_name
+    if username is not None:
+        user.username = username
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+def change_password(session, user: User, new_password: str) -> User:
+    """Change user's password."""
+    user.password_hash = hash_password(new_password)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+

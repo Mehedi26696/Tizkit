@@ -157,3 +157,57 @@ async def ocr_text(
             error=f"Internal server error: {str(e)}",
             data=None
         )
+
+
+from pydantic import BaseModel
+
+class FixLatexRequest(BaseModel):
+    latex_code: str
+    error_message: str
+
+class FixLatexResponse(BaseModel):
+    success: bool
+    fixed_latex: str | None = None
+    error: str | None = None
+
+
+@ocr_router.post("/fix-latex", response_model=FixLatexResponse)
+async def fix_latex_with_error(
+    request: FixLatexRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Fix LaTeX code based on compilation error using Gemini AI.
+    This endpoint is called when LaTeX compilation fails.
+    """
+    try:
+        logger.info(f"Fixing LaTeX for user {current_user.email}")
+        logger.info(f"Error message: {request.error_message[:200]}...")
+        
+        # Call Gemini to fix the LaTeX with error context
+        fix_result = await gemini_service.fix_latex_with_error(
+            request.latex_code, 
+            request.error_message
+        )
+        
+        if fix_result.get("success") and fix_result.get("data"):
+            fixed_code = fix_result["data"].get("content", "")
+            return FixLatexResponse(
+                success=True,
+                fixed_latex=fixed_code,
+                error=None
+            )
+        else:
+            return FixLatexResponse(
+                success=False,
+                fixed_latex=None,
+                error=fix_result.get("error", "Failed to fix LaTeX")
+            )
+            
+    except Exception as e:
+        logger.error(f"Fix LaTeX error: {str(e)}")
+        return FixLatexResponse(
+            success=False,
+            fixed_latex=None,
+            error=f"Internal server error: {str(e)}"
+        )

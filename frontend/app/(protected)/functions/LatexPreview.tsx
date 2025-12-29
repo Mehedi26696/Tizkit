@@ -3,15 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import 'katex/dist/katex.min.css';
 import { latexService } from '@/services/latexService';
+import { toast } from 'sonner';
 
 interface LatexPreviewProps {
   latexCode: string;
   type: 'table' | 'diagram' | 'imageToLatex';
+  onLatexFixed?: (fixedLatex: string) => void;
 }
 
-const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type }) => {
+const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFixed }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFixing, setIsFixing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Remove Markdown code block markers and backticks from LaTeX code
@@ -72,6 +75,29 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type }) => {
     }
   };
 
+  // Fix LaTeX with AI when compilation fails
+  const handleFixWithAI = async () => {
+    if (!error || !latexCode || !onLatexFixed) return;
+    
+    setIsFixing(true);
+    try {
+      const result = await latexService.fixLatexWithError(latexCode, error);
+      
+      if (result.success && result.fixedLatex) {
+        onLatexFixed(result.fixedLatex);
+        setError(null);
+        toast.success('LaTeX fixed! Recompiling...');
+      } else {
+        toast.error(result.error || 'Failed to fix LaTeX');
+      }
+    } catch (err) {
+      console.error('Failed to fix LaTeX:', err);
+      toast.error('Failed to fix LaTeX with AI');
+    } finally {
+      setIsFixing(false);
+    }
+  };
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (latexCode) {
@@ -127,9 +153,30 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type }) => {
         {error && (
           <div className="text-red-600 p-6 max-w-3xl w-full">
             <div className="bg-red-50 rounded-lg border border-red-200 overflow-hidden">
-              <div className="bg-red-100 px-4 py-3 border-b border-red-200 flex items-center gap-2">
-                <span className="text-2xl">⚠️</span>
-                <span className="font-semibold text-lg">LaTeX Compilation Error</span>
+              <div className="bg-red-100 px-4 py-3 border-b border-red-200 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">⚠️</span>
+                  <span className="font-semibold text-lg">LaTeX Compilation Error</span>
+                </div>
+                {onLatexFixed && (
+                  <button
+                    onClick={handleFixWithAI}
+                    disabled={isFixing}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2 shadow-md"
+                  >
+                    {isFixing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Fixing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>✨</span>
+                        <span>Fix with AI</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
               <div className="p-4">
                 <pre className="text-sm whitespace-pre-wrap font-mono bg-white p-4 rounded border border-red-200 overflow-x-auto max-h-96 overflow-y-auto">
@@ -144,6 +191,11 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type }) => {
                   <li>Ensure required packages are included</li>
                   <li>Check for special characters that need escaping</li>
                 </ul>
+                {onLatexFixed && (
+                  <p className="mt-3 text-purple-700 font-medium">
+                    💡 Click "Fix with AI" above to automatically attempt to fix the error using Gemini AI
+                  </p>
+                )}
               </div>
             </div>
           </div>

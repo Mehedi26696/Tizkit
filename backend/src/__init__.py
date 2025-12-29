@@ -109,9 +109,30 @@ except Exception:
 # ImageToLatex routes (package bundles multiple routers)
 try:
     from src.ImageToLatex.routes import ImageToLatex_Router as _imagetolatex_router
-    app.include_router(_imagetolatex_router, prefix="/image-to-latex", tags=["image-to-latex"])
+    app.include_router(_imagetolatex_router, prefix="/image_to_latex", tags=["image-to-latex"])
 except Exception:
     logger.exception("Failed to import/include ImageToLatex router")
+
+# HandWrittenFlowChartToLatex routes
+try:
+    from src.HandWrittenFlowChartToLatex.routes import handwritten_flowchart_router as _hwfc_router
+    app.include_router(_hwfc_router, prefix="/handwritten_flowchart", tags=["handwritten-flowchart"])
+except Exception:
+    logger.exception("Failed to import/include HandWrittenFlowChartToLatex router")
+
+# Project routes
+try:
+    from src.auth.routes.project_routes import project_router as _project_router
+    app.include_router(_project_router, prefix="/projects", tags=["projects"])
+except Exception:
+    logger.exception("Failed to import/include project router")
+
+# Sub-project routes (nested under projects)
+try:
+    from src.auth.routes.sub_project_routes import sub_project_router as _sub_project_router
+    app.include_router(_sub_project_router, prefix="/projects", tags=["sub-projects"])
+except Exception:
+    logger.exception("Failed to import/include sub-project router")
 
 
  

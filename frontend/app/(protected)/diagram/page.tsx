@@ -245,7 +245,11 @@ export default function DiagramPage() {
               <CardContent>
                 {latexCode ? (
                   <div className="bg-white rounded-lg p-4 border border-gray-200 min-h-80">
-                    <LatexPreview latexCode={latexCode} type="diagram" />
+                    <LatexPreview 
+                      latexCode={latexCode} 
+                      type="diagram" 
+                      onLatexFixed={(fixedLatex) => setLatexCode(fixedLatex)}
+                    />
                   </div>
                 ) : (
                   <div className="bg-gray-50 rounded-lg p-8 text-center min-h-80 flex flex-col justify-center">

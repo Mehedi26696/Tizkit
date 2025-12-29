@@ -1,6 +1,7 @@
 "use client";
 import React from 'react';
 import { useState } from 'react';
+import apiClient from '@/lib/api/client';
 
 interface HandwrittenFlowchartProps {
   onLatexGenerated?: (latexCode: string) => void;
@@ -39,17 +40,11 @@ const HandwrittenFlowchart: React.FC<HandwrittenFlowchartProps> = ({ onLatexGene
       formData.append('title', 'Handwritten Flowchart');
       formData.append('style', 'enhanced');
 
-      const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-      const response = await fetch(`${BASE_URL}/handwritten_flowchart/process-complete`, {
-        method: 'POST',
-        body: formData,
+      const response = await apiClient.post('/handwritten_flowchart/process-complete', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      const result = response.data;
 
       if (result.success) {
         setLatexCode(result.latex_code);

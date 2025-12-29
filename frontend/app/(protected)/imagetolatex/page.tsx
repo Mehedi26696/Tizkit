@@ -282,7 +282,11 @@ export default function ImageToLatexPage() {
               <CardContent>
                 {latexCode ? (
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
-                    <LatexPreview latexCode={latexCode} type="imageToLatex" />
+                    <LatexPreview 
+                      latexCode={latexCode} 
+                      type="imageToLatex" 
+                      onLatexFixed={(fixedLatex) => setLatexCode(fixedLatex)}
+                    />
                   </div>
                 ) : (
                   <div className="bg-gray-50 rounded-lg p-8 text-center">

@@ -1,20 +1,30 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Settings, ChevronDown } from "lucide-react";
+import { Settings, ChevronDown, LogOut } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/context/AuthContext";
 
 export default function DashboardHeader() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const user = {
-    name: "John Doe",
-    email: "john.doe@example.com",
-    initials: "JD"
+  // Generate initials from user data
+  const getInitials = () => {
+    if (user?.full_name) {
+      return user.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    if (user?.username) {
+      return user.username.slice(0, 2).toUpperCase();
+    }
+    return user?.email?.slice(0, 2).toUpperCase() || 'U';
   };
+
+  const displayName = user?.full_name || user?.username || 'User';
+  const displayEmail = user?.email || '';
 
   const dropdownVariants = {
     hidden: { opacity: 0, y: -10, scale: 0.95 },
@@ -65,13 +75,13 @@ export default function DashboardHeader() {
             >
               {/* User Avatar */}
               <div className="w-9 h-9 bg-[#FA5F55] rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                {user.initials}
+                {getInitials()}
               </div>
 
               {/* User Info */}
               <div className="text-left">
-                <p className="text-sm font-medium text-gray-800">{user.name}</p>
-                <p className="text-xs text-gray-500">{user.email}</p>
+                <p className="text-sm font-medium text-gray-800">{displayName}</p>
+                <p className="text-xs text-gray-500 max-w-[150px] truncate">{displayEmail}</p>
               </div>
 
               <ChevronDown 
@@ -102,19 +112,41 @@ export default function DashboardHeader() {
                     exit="exit"
                   >
                     <div className="p-4 border-b border-gray-200">
-                      <p className="font-medium text-gray-800">{user.name}</p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
+                      <p className="font-medium text-gray-800">{displayName}</p>
+                      <p className="text-sm text-gray-500 truncate">{displayEmail}</p>
                     </div>
                     
                     <div className="py-2">
                       <button
                         onClick={() => {
-                          router.push("/dashboard/profile");
+                          router.push("/dashboard/settings");
                           setShowDropdown(false);
                         }}
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition"
                       >
                         Profile Settings
+                      </button>
+                      <button
+                        onClick={() => {
+                          router.push("/dashboard/billing");
+                          setShowDropdown(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition"
+                      >
+                        Billing & Credits
+                      </button>
+                    </div>
+
+                    <div className="border-t border-gray-200 py-2">
+                      <button
+                        onClick={() => {
+                          logout();
+                          setShowDropdown(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign Out
                       </button>
                     </div>
                   </motion.div>

@@ -9,13 +9,15 @@ import ImageToLatex from '@/app/(protected)/functions/ImageToLatex';
 import HandwrittenFlowchart from '@/app/(protected)/functions/HandwrittenFlowchart';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, Copy } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Save, Loader2, Check, Upload, FileText, Image as ImageIcon, Trash2 } from 'lucide-react';
 import ExportModal from '@/app/(protected)/functions/ExportModal';
 import LatexPreview from '@/app/(protected)/functions/LatexPreview';
 import { latexService } from '@/services/latexService';
-import Split from './Splitter';
-import { motion } from 'framer-motion';
-import Splitter from './Splitter';
+import { motion, AnimatePresence } from 'framer-motion';
+import Splitter from '@/app/(protected)/functions/Splitter';
+import { getProject, updateProject, autoSaveProject, getProjectFiles, uploadProjectFile, deleteFile, getFileSignedUrl, getFileTypeFromExtension } from '@/lib/api/projects';
+import type { Project, ProjectStatus, ProjectFile } from '@/types/project';
+import { toast } from 'sonner';
 
 interface EditorPageProps {
   onNavigateToHome: () => void;
@@ -31,35 +33,172 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
   const [autoUpdate, setAutoUpdate] = React.useState(true);
   const [projectName, setProjectName] = React.useState<string>('Untitled Project');
   const [isEditingName, setIsEditingName] = React.useState(false);
+  const [project, setProject] = React.useState<Project | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
+  const autoSaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  
+  // File management state
+  const [projectFiles, setProjectFiles] = React.useState<ProjectFile[]>([]);
+  const [isUploadingFile, setIsUploadingFile] = React.useState(false);
+  const [showFilesPanel, setShowFilesPanel] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Save project data to localStorage
+  // Load project and files from backend on mount
   React.useEffect(() => {
-    if (projectId && latexCode) {
-      localStorage.setItem(`project_${projectId}`, JSON.stringify({
-        latexCode,
-        activeTab,
-        editorData,
-        lastModified: new Date().toISOString()
-      }));
-    }
-  }, [projectId, latexCode, activeTab, editorData]);
-
-  // Load project data on mount
-  React.useEffect(() => {
-    if (projectId) {
-      const savedData = localStorage.getItem(`project_${projectId}`);
-      if (savedData) {
-        try {
-          const parsed = JSON.parse(savedData);
-          setLatexCode(parsed.latexCode || '');
-          setActiveTab(parsed.activeTab || 'table');
-          setEditorData(parsed.editorData || null);
-        } catch (error) {
-          console.error('Failed to load project data:', error);
+    const loadProject = async () => {
+      if (!projectId) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        setIsLoading(true);
+        const [projectData, filesData] = await Promise.all([
+          getProject(projectId),
+          getProjectFiles(projectId)
+        ]);
+        setProject(projectData);
+        setProjectName(projectData.title);
+        setProjectFiles(filesData);
+        if (projectData.latex_content) {
+          setLatexCode(projectData.latex_content);
         }
+      } catch (error) {
+        console.error('Failed to load project:', error);
+        toast.error('Failed to load project');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadProject();
+  }, [projectId]);
+
+  // Auto-save to backend when content changes
+  React.useEffect(() => {
+    if (!projectId || !latexCode || isLoading) return;
+    
+    // Mark as having unsaved changes
+    setHasUnsavedChanges(true);
+    
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    // Set new auto-save timeout (save after 2 seconds of no changes)
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        setIsSaving(true);
+        await autoSaveProject(projectId, latexCode);
+        setLastSaved(new Date());
+        setHasUnsavedChanges(false);
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 2000);
+    
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [latexCode, projectId, isLoading]);
+
+  // Save project name when editing finishes
+  const handleSaveProjectName = async () => {
+    setIsEditingName(false);
+    if (projectId && projectName !== project?.title) {
+      try {
+        await updateProject(projectId, { title: projectName });
+        setProject(prev => prev ? { ...prev, title: projectName } : null);
+        toast.success('Project renamed');
+      } catch (error) {
+        console.error('Failed to update project name:', error);
+        toast.error('Failed to rename project');
+        setProjectName(project?.title || 'Untitled Project');
       }
     }
-  }, [projectId]);
+  };
+
+  // Manual save function
+  const handleManualSave = async () => {
+    if (!projectId) return;
+    
+    try {
+      setIsSaving(true);
+      await updateProject(projectId, {
+        title: projectName,
+        latex_content: latexCode,
+        status: 'in_progress' as ProjectStatus,
+      });
+      setLastSaved(new Date());
+      setHasUnsavedChanges(false);
+      toast.success('Project saved');
+    } catch (error) {
+      console.error('Failed to save project:', error);
+      toast.error('Failed to save project');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // File upload handler
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || !projectId) return;
+    
+    setIsUploadingFile(true);
+    
+    try {
+      for (const file of Array.from(files)) {
+        const fileType = getFileTypeFromExtension(file.name);
+        const uploadedFile = await uploadProjectFile(projectId, file, fileType, projectFiles.length);
+        setProjectFiles(prev => [...prev, uploadedFile]);
+        toast.success(`Uploaded ${file.name}`);
+      }
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      toast.error('Failed to upload file');
+    } finally {
+      setIsUploadingFile(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Delete file handler
+  const handleDeleteFile = async (fileId: string) => {
+    if (!projectId) return;
+    
+    try {
+      await deleteFile(projectId, fileId);
+      setProjectFiles(prev => prev.filter(f => f.id !== fileId));
+      toast.success('File deleted');
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+      toast.error('Failed to delete file');
+    }
+  };
+
+  // Open file (get signed URL)
+  const handleOpenFile = async (file: ProjectFile) => {
+    if (!projectId || !file.file_url) return;
+    
+    try {
+      const { url } = await getFileSignedUrl(projectId, file.id);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Failed to get file URL:', error);
+      toast.error('Failed to open file');
+    }
+  };
 
   // Debounced LaTeX generation function
   const generateLatexDebounced = React.useCallback(
@@ -143,6 +282,18 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
     navigator.clipboard.writeText(latexCode);
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="h-screen bg-[#f9f4eb]/50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 animate-spin text-[#FA5F55]" />
+          <p className="text-[#1f1e24]/70">Loading project...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen bg-[#f9f4eb]/50 fixed inset-0 overflow-hidden">
       {/* Header */}
@@ -169,11 +320,11 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
                       type="text"
                       value={projectName}
                       onChange={(e) => setProjectName(e.target.value)}
-                      onBlur={() => setIsEditingName(false)}
+                      onBlur={handleSaveProjectName}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') setIsEditingName(false);
+                        if (e.key === 'Enter') handleSaveProjectName();
                         if (e.key === 'Escape') {
-                          setProjectName(projectName);
+                          setProjectName(project?.title || 'Untitled Project');
                           setIsEditingName(false);
                         }
                       }}
@@ -189,8 +340,22 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
                       {projectName}
                     </h1>
                   )}
-                  <p className="text-xs text-[#1f1e24]/60">
-                    {projectId ? `ID: ${projectId}` : 'Visual LaTeX Editor'}
+                  <p className="text-xs text-[#1f1e24]/60 flex items-center gap-2">
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Saving...
+                      </>
+                    ) : hasUnsavedChanges ? (
+                      <span className="text-amber-600">Unsaved changes</span>
+                    ) : lastSaved ? (
+                      <>
+                        <Check className="w-3 h-3 text-green-600" />
+                        Saved {lastSaved.toLocaleTimeString()}
+                      </>
+                    ) : (
+                      projectId ? `ID: ${projectId.slice(0, 8)}...` : 'Visual LaTeX Editor'
+                    )}
                   </p>
                 </div>
               </div>
@@ -220,6 +385,20 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
                 </motion.button>
               )}
               <motion.button
+                onClick={handleManualSave}
+                disabled={isSaving || !projectId}
+                className="flex items-center gap-2 px-4 py-2 bg-[#f9f4eb] text-[#1f1e24] rounded-lg border border-[#1f1e24]/20 hover:border-[#FA5F55]/40 transition-all disabled:opacity-50"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Save
+              </motion.button>
+              <motion.button
                 onClick={() => setIsExportModalOpen(true)}
                 disabled={!latexCode.trim() || isCompiling}
                 className="flex items-center gap-2 px-4 py-2 bg-[#FA5F55] text-white rounded-lg hover:bg-[#FA5F55]/90 transition-all shadow-sm disabled:opacity-50"
@@ -236,14 +415,11 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
       {/* Main Content with resizable panels */}
       <Splitter
         className="flex h-[calc(100vh-4rem)]"
-        sizes={[18, 32, 25, 25]}
-        minSize={[200, 300, 200, 200]}
-        gutterSize={8}
         direction="horizontal"
       >
         {/* Left Sidebar - Editor Selection */}
         <div className="w-full max-w-[320px] bg-white border-r-2 border-[#FA5F55]/40 flex flex-col">
-          <div className="border-b-2 border-[#FA5F55]/40 bg-gradient-to-br from-[#f9f4eb]/50 to-white p-6">
+          <div className="border-b-2 border-[#FA5F55]/40 bg-linear-to-br from-[#f9f4eb]/50 to-white p-6">
             <div className="space-y-3">
               {/* Table Editor Button */}
               <motion.button
@@ -371,6 +547,75 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
             </div>
           </div>
 
+          {/* Project Files Section */}
+          <div className="border-t-2 border-[#FA5F55]/40 p-4 flex-1 overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-[#1f1e24]">Project Files</h3>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingFile}
+                className="p-1.5 hover:bg-[#FA5F55]/10 rounded-lg transition-colors disabled:opacity-50"
+                title="Upload file"
+              >
+                {isUploadingFile ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-[#FA5F55]" />
+                ) : (
+                  <Upload className="w-4 h-4 text-[#FA5F55]" />
+                )}
+              </motion.button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".tex,.png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.md"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </div>
+            
+            {projectFiles.length === 0 ? (
+              <p className="text-xs text-[#1f1e24]/50 text-center py-4">
+                No files yet. Upload images, .tex files, or PDFs.
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {projectFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    className="group flex items-center gap-2 p-2 rounded-lg hover:bg-[#f9f4eb]/50 transition-colors"
+                  >
+                    {file.file_type === 'image' ? (
+                      <ImageIcon className="w-4 h-4 text-[#FA5F55]/70 flex-shrink-0" />
+                    ) : (
+                      <FileText className="w-4 h-4 text-[#FA5F55]/70 flex-shrink-0" />
+                    )}
+                    <button
+                      onClick={() => handleOpenFile(file)}
+                      className="flex-1 text-left text-xs text-[#1f1e24] truncate hover:text-[#FA5F55]"
+                      title={file.filename}
+                    >
+                      {file.filename}
+                    </button>
+                    <span className="text-[10px] text-[#1f1e24]/40">
+                      {file.file_size ? `${(file.file_size / 1024).toFixed(1)}KB` : ''}
+                    </span>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleDeleteFile(file.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded transition-all"
+                      title="Delete file"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-500" />
+                    </motion.button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Status Section */}
           <div className="border-t-2 border-[#FA5F55]/40 mt-auto bg-gradient-to-br from-white p-6  to-[#f9f4eb]/50">
             <div className="space-y-3">
@@ -383,6 +628,10 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#1f1e24]/70">Lines of Code</span>
                 <span className="font-mono text-[#1f1e24] font-medium">{latexCode ? latexCode.split('\n').length : 0}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#1f1e24]/70">Files</span>
+                <span className="font-mono text-[#1f1e24] font-medium">{projectFiles.length}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[#1f1e24]/70">Status</span>
@@ -527,7 +776,11 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
           <div className="flex-1 overflow-auto bg-[#f9f4eb]/30">
             {latexCode ? (
               <div className="animate-fade-in">
-                <LatexPreview latexCode={latexCode} type={activeTab === 'handwrittenFlowchart' ? 'diagram' : activeTab as 'table' | 'diagram' | 'imageToLatex'} />
+                <LatexPreview 
+                  latexCode={latexCode} 
+                  type={activeTab === 'handwrittenFlowchart' ? 'diagram' : activeTab as 'table' | 'diagram' | 'imageToLatex'} 
+                  onLatexFixed={(fixedLatex) => setLatexCode(fixedLatex)}
+                />
               </div>
             ) : (
               <div className="flex items-center justify-center h-full">

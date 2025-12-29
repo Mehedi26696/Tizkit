@@ -41,7 +41,7 @@ class Settings:
 
     # External APIs
     GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")
-    GEMINI_BASE_URL: str = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent")
+    GEMINI_BASE_URL: str = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent")
     OCR_SPACE_API_KEY: Optional[str] = os.getenv("OCR_SPACE_API_KEY")
     OCR_SPACE_BASE_URL: str = os.getenv("OCR_SPACE_BASE_URL", "https://api.ocr.space/parse/image")
 

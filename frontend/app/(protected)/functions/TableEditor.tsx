@@ -22,23 +22,43 @@ interface TableEditorProps {
     cells: Cell[][];
     latexCode?: string;
   }) => void;
+  initialData?: {
+    rows?: number;
+    cols?: number;
+    cells?: Cell[][];
+  } | null;
 }
 
-const TableEditor: React.FC<TableEditorProps> = ({ onTableChange }) => {
-  const [rows, setRows] = useState(3);
-  const [cols, setCols] = useState(3);
-  const [cells, setCells] = useState<Cell[][]>(() => 
-    Array(3).fill(null).map((_, i) => 
-      Array(3).fill(null).map((_, j) => ({
-        id: `cell-${i}-${j}`,
-        content: `Cell ${i + 1},${j + 1}`,
-        backgroundColor: '#ffffff',
-        textColor: '#000000',
-        bold: false,
-        alignment: 'left' as const,
-      }))
-    )
+const createDefaultCells = (numRows: number, numCols: number): Cell[][] => {
+  return Array(numRows).fill(null).map((_, i) => 
+    Array(numCols).fill(null).map((_, j) => ({
+      id: `cell-${i}-${j}`,
+      content: `Cell ${i + 1},${j + 1}`,
+      backgroundColor: '#ffffff',
+      textColor: '#000000',
+      bold: false,
+      alignment: 'left' as const,
+    }))
   );
+};
+
+const TableEditor: React.FC<TableEditorProps> = ({ onTableChange, initialData }) => {
+  const [rows, setRows] = useState(() => initialData?.rows ?? 3);
+  const [cols, setCols] = useState(() => initialData?.cols ?? 3);
+  const [cells, setCells] = useState<Cell[][]>(() => 
+    initialData?.cells ?? createDefaultCells(initialData?.rows ?? 3, initialData?.cols ?? 3)
+  );
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize from initial data when it arrives
+  useEffect(() => {
+    if (initialData && !isInitialized) {
+      if (initialData.rows) setRows(initialData.rows);
+      if (initialData.cols) setCols(initialData.cols);
+      if (initialData.cells) setCells(initialData.cells);
+      setIsInitialized(true);
+    }
+  }, [initialData, isInitialized]);
   const [isCompiling, setIsCompiling] = useState(false);
   const [generatedLatex, setGeneratedLatex] = useState<string>('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);

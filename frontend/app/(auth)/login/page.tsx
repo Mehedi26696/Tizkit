@@ -1,11 +1,47 @@
 'use client';
-import { Github, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/context/AuthContext';
+import { toast } from 'sonner';
 
-export default function LoginForm1() {
+export default function LoginPage() {
+  const router = useRouter();
+  const { login, isLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.email || !formData.password) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    try {
+      await login({
+        username: formData.email,
+        password: formData.password,
+      });
+      toast.success('Login successful!');
+      router.push('/dashboard');
+    } catch (error: any) {
+      const message = error.response?.data?.detail || 'Login failed. Please try again.';
+      toast.error(message);
+    }
+  };
+
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center justify-center bg-[#f9f4eb] overflow-hidden">
       {/* Animated coral gradient blobs */}
@@ -36,13 +72,17 @@ export default function LoginForm1() {
               </p>
             </div>
           </div>
-          <form className="space-y-6 mt-8">
+          <form className="space-y-6 mt-8" onSubmit={handleSubmit}>
             <div>
               <label className="font-medium text-[#2a2a2a]">Email</label>
               <input
                 type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                disabled={isLoading}
                 required
-                className="mt-2 w-full rounded-lg border border-[#FA5F55]/30 bg-white/80 px-3 py-2 shadow-sm outline-none focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition"
+                className="mt-2 w-full rounded-lg border border-[#FA5F55]/30 bg-white/80 px-3 py-2 shadow-sm outline-none focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition disabled:opacity-50"
               />
             </div>
             <div className="relative">
@@ -50,8 +90,12 @@ export default function LoginForm1() {
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={isLoading}
                   required
-                  className="mt-2 w-full rounded-lg border border-[#FA5F55]/30 bg-white/80 px-3 py-2 shadow-sm outline-none focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition"
+                  className="mt-2 w-full rounded-lg border border-[#FA5F55]/30 bg-white/80 px-3 py-2 shadow-sm outline-none focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition disabled:opacity-50"
                 />
                 <button
                   type="button"
@@ -67,8 +111,12 @@ export default function LoginForm1() {
                 </button>
               </div>
             </div>
-            <button className="w-full rounded-lg bg-[#252525] px-4 py-2 font-medium text-white duration-150 hover:bg-[#fa7a6d] active:bg-[#FA5F55] shadow transition">
-              Sign in
+            <button 
+              type="submit"
+              disabled={isLoading}
+              className="w-full rounded-lg bg-[#252525] px-4 py-2 font-medium text-white duration-150 hover:bg-[#fa7a6d] active:bg-[#FA5F55] shadow transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
           <div className="text-center mt-4">
