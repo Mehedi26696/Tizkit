@@ -131,6 +131,7 @@ export default function FooterStandard() {
                   width={132} 
                   height={132}
                   className="transition-all duration-300"
+                  style={{ height: 'auto' }}
                 />
               </motion.div>
             </Link>

@@ -37,6 +37,7 @@ export default function Sidebar() {
           alt="Logo"
           width={150}
           height={40}
+          style={{ height: 'auto' }}
         />
       </motion.div>
 

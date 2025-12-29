@@ -56,6 +56,7 @@ export default function LoginPage() {
               width={80}
               height={40}
               className="mx-auto"
+              style={{ height: 'auto' }}
             />
             <div className="mt-5 space-y-2">
               <h3 className="text-3xl font-bold tracking-tight text-[#2a2a2a]">

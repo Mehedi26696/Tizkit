@@ -106,7 +106,7 @@ function Features() {
               viewport={{ once: true }}
               className="flex items-center gap-1 bg-[#2a2a2a] text-white px-2 py-3 rounded-lg text-lg justify-center"
             >
-              <Image src='/images/star.png' width={30} height={30} alt="star" className=""/>
+              <Image src='/images/star.png' width={30} height={30} alt="star" style={{ height: 'auto' }}/>
               <span>{cta}</span>
             </motion.div>
           ))}

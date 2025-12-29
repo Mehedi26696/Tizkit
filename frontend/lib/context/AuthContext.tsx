@@ -15,26 +15,30 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const isAuthenticated = !!user && !!token;
 
   // Initialize auth state from localStorage
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('access_token');
-      if (storedToken) {
-        setToken(storedToken);
-        try {
-          const userData = await authApi.getMe();
-          setUser(userData);
-        } catch (error) {
-          // Token invalid or expired
-          localStorage.removeItem('access_token');
-          setToken(null);
+      try {
+        const storedToken = localStorage.getItem('access_token');
+        if (storedToken) {
+          setToken(storedToken);
+          try {
+            const userData = await authApi.getMe();
+            setUser(userData);
+          } catch (error) {
+            // Token invalid or expired
+            localStorage.removeItem('access_token');
+            setToken(null);
+          }
         }
+      } finally {
+        setIsInitialized(true);
       }
-      setIsLoading(false);
     };
 
     initAuth();
@@ -95,6 +99,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user,
     token,
     isLoading,
+    isInitialized,
     isAuthenticated,
     login,
     register,

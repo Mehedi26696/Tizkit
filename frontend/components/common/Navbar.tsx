@@ -14,6 +14,8 @@ const Navbar = () => {
           width={150}
           height={40}
           className='cursor-pointer'
+          priority
+          style={{ height: 'auto' }}
         />
       </div>
 
