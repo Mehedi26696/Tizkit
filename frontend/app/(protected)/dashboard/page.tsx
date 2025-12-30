@@ -11,6 +11,7 @@ import { getProjects, createProject, deleteProject, updateProject } from "@/lib/
 import type { ProjectListItem, ProjectStatus } from "@/types/project";
 import { toast } from "sonner";
 
+
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { 
@@ -107,6 +108,8 @@ export default function DashboardPage() {
       setIsCreating(false);
     }
   };
+
+
 
   const handleDeleteProject = async (projectId: string) => {
     try {
@@ -483,6 +486,8 @@ export default function DashboardPage() {
             </div>
           )}
         </motion.div>
+
+
 
         {/* Selection Info */}
         {selectedProjects.length > 0 && (

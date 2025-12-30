@@ -42,7 +42,7 @@ export function getErrorMessage(error: any): string | CreditError {
 
 export const latexService = {
 
-  async generateLatex({ type, data }: { type: 'table' | 'diagram' | 'imageToLatex' | 'handwrittenFlowchart'; data: any }) {
+  async generateLatex({ type, data }: { type: 'table' | 'diagram' | 'imageToLatex' | 'handwrittenFlowchart' | 'document'; data: any }) {
     let endpoint = '';
 
     switch (type) {
@@ -65,7 +65,7 @@ export const latexService = {
     return apiClient.post(endpoint, { data });
   },
 
-  async preview({ type, data, latex_code, output_format }: { type: 'table' | 'diagram' | 'imageToLatex' | 'handwrittenFlowchart'; data?: any; latex_code: string; output_format: 'pdf' | 'png' }) {
+  async preview({ type, data, latex_code, output_format, sub_project_id }: { type: 'table' | 'diagram' | 'imageToLatex' | 'handwrittenFlowchart' | 'document'; data?: any; latex_code: string; output_format: 'pdf' | 'png', sub_project_id?: string }) {
     let endpoint = '';
 
     switch (type) {
@@ -76,6 +76,7 @@ export const latexService = {
         endpoint = `/diagram/preview`;
         break;
       case 'imageToLatex':
+      case 'document':
         endpoint = `/image_to_latex/preview`;
         break;
       case 'handwrittenFlowchart':
@@ -85,10 +86,10 @@ export const latexService = {
         throw new Error('Invalid type specified');
     }
 
-    return apiClient.post(endpoint, { data, latex_code, output_format }, { responseType: 'blob' });
+    return apiClient.post(endpoint, { data, latex_code, output_format, sub_project_id }, { responseType: 'blob' });
   },
 
-  async compile({ type, latex_code, output_format }: { type: 'table' | 'diagram' | 'imageToLatex' | 'handwrittenFlowchart'; latex_code: string; output_format: 'pdf' | 'png' }) {
+  async compile({ type, latex_code, output_format, sub_project_id }: { type: 'table' | 'diagram' | 'imageToLatex' | 'handwrittenFlowchart' | 'document'; latex_code: string; output_format: 'pdf' | 'png', sub_project_id?: string }) {
     let endpoint = '';
 
     switch (type) {
@@ -99,6 +100,7 @@ export const latexService = {
         endpoint = `/diagram/compile`;
         break;
       case 'imageToLatex':
+      case 'document':
         endpoint = `/image_to_latex/compile`;
         break;
       case 'handwrittenFlowchart':
@@ -110,7 +112,8 @@ export const latexService = {
     
     return apiClient.post(endpoint, { 
       latex_code, 
-      output_format 
+      output_format,
+      sub_project_id
     }, { 
       responseType: 'blob' 
     });

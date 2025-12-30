@@ -146,7 +146,8 @@ export function getSubProjectTypeLabel(type: SubProjectType): string {
     table: 'Table',
     diagram: 'Diagram',
     imageToLatex: 'Image to LaTeX',
-    handwrittenFlowchart: 'Handwritten Flowchart'
+    handwrittenFlowchart: 'Handwritten Flowchart',
+    document: 'Document'
   };
   return labels[type] || type;
 }
@@ -157,7 +158,8 @@ export function getSubProjectTypeIcon(type: SubProjectType): string {
     table: 'table',
     diagram: 'git-branch',
     imageToLatex: 'image',
-    handwrittenFlowchart: 'pen-tool'
+    handwrittenFlowchart: 'pen-tool',
+    document: 'file-text'
   };
   return icons[type] || 'file';
 }

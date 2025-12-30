@@ -1,25 +1,43 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import 'katex/dist/katex.min.css';
 import { latexService, CreditError, isCreditError } from '@/services/latexService';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, CreditCard } from 'lucide-react';
+import { AlertTriangle, CreditCard, RotateCcw } from 'lucide-react';
+
+// react-pdf imports
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
+// Configure PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 interface LatexPreviewProps {
   latexCode: string;
-  type: 'table' | 'diagram' | 'imageToLatex';
+  type: 'table' | 'diagram' | 'imageToLatex' | 'document';
+  subProjectId?: string;
   onLatexFixed?: (fixedLatex: string) => void;
 }
 
-const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFixed }) => {
+const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, subProjectId, onLatexFixed }) => {
   const router = useRouter();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFixing, setIsFixing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [creditError, setCreditError] = useState<CreditError | null>(null);
+  
+  // PDF State
+  const [numPages, setNumPages] = useState<number>(0);
+
+  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    setNumPages(numPages);
+  }
+
+  function onDocumentLoadError(error: Error) {
+    toast.error('Failed to load PDF viewer: ' + error.message);
+  }
 
   // Remove Markdown code block markers and backticks from LaTeX code
   const sanitizeLatex = (code: string) => {
@@ -39,15 +57,26 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
     setIsLoading(true);
     setError(null);
     setCreditError(null);
+    // Reset pages while loading
+    setNumPages(0);
 
     try {
       let response;
+      let outputFormat: 'pdf' | 'png' = 'png';
+      if (type === 'document') {
+        outputFormat = 'pdf';
+      }
+
       response = await latexService.compile({
         type,
         latex_code: cleanLatex,
-        output_format: 'png',
+        output_format: outputFormat,
+        sub_project_id: subProjectId
       });
-      const blob = response.data;
+      
+      const blob = new Blob([response.data], { 
+        type: outputFormat === 'pdf' ? 'application/pdf' : 'image/png' 
+      });
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
     } catch (err: any) {
@@ -121,6 +150,9 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
   };
 
   useEffect(() => {
+    // Skip auto-compile for document type - use manual compile button instead
+    if (type === 'document') return;
+    
     const timeoutId = setTimeout(() => {
       if (latexCode) {
         generatePreview();
@@ -128,9 +160,9 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
     }, 1000); // Debounce preview generation
 
     return () => clearTimeout(timeoutId);
-  }, [latexCode]);
+  }, [latexCode, type]);
 
-  // Cleanup URL when component unmounts
+  // Cleanup URL when component unmounts or updates
   useEffect(() => {
     return () => {
       if (previewUrl) {
@@ -146,7 +178,11 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
         <button
           onClick={generatePreview}
           disabled={isLoading || !latexCode.trim()}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium flex items-center space-x-2"
+          className={`px-4 py-2 text-white rounded text-sm font-medium flex items-center space-x-2 transition-all ${
+            type === 'document' 
+              ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md hover:shadow-lg disabled:from-gray-300 disabled:to-gray-400' 
+              : 'bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300'
+          } disabled:cursor-not-allowed`}
         >
           {isLoading ? (
             <>
@@ -155,18 +191,16 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
             </>
           ) : (
             <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Refresh</span>
+              <RotateCcw className="w-4 h-4" />
+              <span>{type === 'document' ? 'Compile PDF' : 'Refresh'}</span>
             </>
           )}
         </button>
       </div>
 
-      <div className="flex-1 border border-gray-300 rounded-lg bg-white flex items-center justify-center overflow-hidden">
+      <div className={`flex-1 overflow-hidden border border-gray-300 rounded-lg ${type === 'document' ? 'bg-gray-200' : 'bg-white'} flex flex-col relative`}>
         {isLoading && (
-          <div className="flex flex-col items-center gap-3 text-gray-600">
+          <div className="absolute inset-0 z-10 bg-white/80 flex flex-col items-center justify-center gap-3 text-gray-600">
             <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="text-sm">Compiling LaTeX with Tectonic...</p>
           </div>
@@ -174,7 +208,8 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
 
         {/* Credit Error UI */}
         {creditError && (
-          <div className="p-6 max-w-md w-full">
+          <div className="p-6 h-full flex items-center justify-center">
+             <div className="max-w-md w-full">
             <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl border-2 border-red-200 p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -219,12 +254,14 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
                 </button>
               </div>
             </div>
+            </div>
           </div>
         )}
 
         {error && !creditError && (
-          <div className="text-red-600 p-6 max-w-3xl w-full">
-            <div className="bg-red-50 rounded-lg border border-red-200 overflow-hidden">
+          <div className="text-red-600 p-6 overflow-auto">
+            <div className="bg-red-50 rounded-lg border border-red-200 overflow-hidden max-w-3xl mx-auto">
+              {/* Error Content */}
               <div className="bg-red-100 px-4 py-3 border-b border-red-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">⚠️</span>
@@ -273,18 +310,50 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
           </div>
         )}
 
-        {!isLoading && !error && previewUrl && (
-          <div className="w-full h-full p-4 overflow-auto">
-            <img
-              src={previewUrl}
-              alt="LaTeX Preview"
-              className="max-w-full h-auto mx-auto shadow-lg rounded border"
-            />
+        {/* Content Display */}
+        {!error && !creditError && previewUrl && (
+          <div className="flex-1 overflow-auto custom-scrollbar relative">
+             {type === 'document' ? (
+              <div className="min-h-full p-8 flex flex-col items-center gap-6">
+                 <Document
+                    key={previewUrl}
+                    file={previewUrl}
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    onLoadError={onDocumentLoadError}
+                    className="flex flex-col gap-6"
+                    loading={
+                      <div className="flex items-center gap-2 text-gray-500 p-4">
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Loading PDF...</span>
+                      </div>
+                    }
+                 >
+                    {Array.from(new Array(numPages), (el, index) => (
+                      <Page 
+                        key={`page_${index + 1}`} 
+                        pageNumber={index + 1} 
+                        renderTextLayer={false} 
+                        renderAnnotationLayer={false}
+                        className="shadow-xl bg-white"
+                        width={600} // Default width, can make responsive if needed
+                      />
+                    ))}
+                 </Document>
+              </div>
+            ) : (
+              <div className="p-4 min-h-full flex items-center justify-center">
+                <img
+                  src={previewUrl}
+                  alt="LaTeX Preview"
+                  className="max-w-full h-auto shadow-lg rounded border"
+                />
+              </div>
+            )}
           </div>
         )}
 
         {!isLoading && !error && !previewUrl && latexCode && (
-          <div className="text-gray-500 text-center p-6">
+          <div className="text-gray-500 text-center p-6 flex flex-col items-center justify-center flex-1">
             <div className="text-4xl mb-3">📄</div>
             <p className="font-medium mb-2">Preview Ready</p>
             <p className="text-sm">Click "Refresh" to generate preview</p>
@@ -292,7 +361,7 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, onLatexFix
         )}
 
         {!latexCode && (
-          <div className="text-gray-400 text-center p-6">
+          <div className="text-gray-400 text-center p-6 flex flex-col items-center justify-center flex-1">
             <div className="text-4xl mb-3">🎯</div>
             <p className="font-medium mb-2">No content to preview</p>
             <p className="text-sm">Start building your {type} to see a preview</p>

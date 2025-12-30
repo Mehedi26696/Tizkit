@@ -297,16 +297,18 @@ export default function SubProjectEditorPage({ params }: PageProps) {
       case 'diagram': return <GitBranch className="w-5 h-5" />;
       case 'imageToLatex': return <ImageIcon className="w-5 h-5" />;
       case 'handwrittenFlowchart': return <PenTool className="w-5 h-5" />;
+      case 'document': return <FileText className="w-5 h-5" />;
     }
   };
 
   // Get preview type for LatexPreview component
-  const getPreviewType = (type: SubProjectType): 'table' | 'diagram' | 'imageToLatex' => {
+  const getPreviewType = (type: SubProjectType): 'table' | 'diagram' | 'imageToLatex' | 'document' => {
     switch (type) {
       case 'table': return 'table';
       case 'diagram': return 'diagram';
       case 'imageToLatex': return 'imageToLatex';
       case 'handwrittenFlowchart': return 'imageToLatex'; // Use imageToLatex preview for handwritten
+      case 'document': return 'document';
       default: return 'imageToLatex';
     }
   };
@@ -466,6 +468,7 @@ export default function SubProjectEditorPage({ params }: PageProps) {
                       {subProject.sub_project_type === 'table' && 'Configure your data table'}
                       {subProject.sub_project_type === 'diagram' && 'Design your TikZ diagram'}
                       {(subProject.sub_project_type === 'imageToLatex' || subProject.sub_project_type === 'handwrittenFlowchart') && 'Select and process image'}
+                      {subProject.sub_project_type === 'document' && 'Edit document and manage assets'}
                     </p>
                   </div>
                 </div>
@@ -542,27 +545,160 @@ export default function SubProjectEditorPage({ params }: PageProps) {
                   </div>
                 )}
 
-                {/* Linked Files */}
-                {linkedFiles.length > 0 && (
-                  <div className="pt-4 border-t border-gray-100">
-                    <h4 className="font-medium text-sm text-gray-700 mb-2">Linked Files</h4>
-                    <div className="space-y-1">
-                      {projectFiles.filter(f => linkedFiles.includes(f.id)).map(file => (
-                        <div key={file.id} className="flex items-center justify-between gap-2 text-sm text-gray-600 p-2 rounded hover:bg-gray-50">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <FileText className="w-4 h-4 shrink-0" />
-                            <span className="truncate">{file.filename}</span>
+                {subProject.sub_project_type === 'document' && (
+                  <div className="space-y-5">
+                    {/* Hero Section */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-5">
+                      <div className="absolute inset-0 bg-black/10"></div>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+                      <div className="relative">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            <FileText className="w-5 h-5 text-white" />
                           </div>
-                          <button
-                            onClick={() => handleUnlinkFile(file.id)}
-                            className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50"
-                            title="Unlink file"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
+                          <div>
+                            <h3 className="text-white font-semibold text-sm">LaTeX Document Editor</h3>
+                            <p className="text-white/70 text-xs">Full document support</p>
+                          </div>
                         </div>
-                      ))}
+                        <p className="text-white/90 text-xs leading-relaxed">
+                          Write any valid LaTeX code with support for linked images, custom packages, and live preview.
+                        </p>
+                      </div>
                     </div>
+
+                    {/* Quick Actions */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setShowFilePicker(true)}
+                        className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-100/50 transition-all duration-300 group"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors">
+                          <Upload className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <span className="text-xs font-medium text-emerald-700">Link Image</span>
+                      </button>
+                      <button
+                        onClick={() => setIsExportModalOpen(true)}
+                        className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-100/50 transition-all duration-300 group"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
+                          <Download className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <span className="text-xs font-medium text-blue-700">Export</span>
+                      </button>
+                    </div>
+
+                    {/* Linked Files Section */}
+                    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm font-medium text-gray-700">Linked Files</span>
+                          {linkedFiles.length > 0 && (
+                            <span className="px-1.5 py-0.5 text-xs font-medium bg-gray-200 text-gray-600 rounded-full">
+                              {linkedFiles.length}
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowFilePicker(true)}
+                          className="h-7 px-2 text-gray-500 hover:text-gray-700"
+                        >
+                          <Upload className="w-3 h-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                      
+                      {linkedFiles.length > 0 ? (
+                        <div className="divide-y divide-gray-100">
+                          {projectFiles.filter(f => linkedFiles.includes(f.id)).map(file => (
+                            <div key={file.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50 transition-colors group">
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center shrink-0">
+                                  <ImageIcon className="w-4 h-4 text-rose-500" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-gray-700 truncate">{file.filename}</p>
+                                  <p className="text-xs text-gray-400">
+                                    {file.file_size ? `${(file.file_size / 1024).toFixed(1)} KB` : 'Image'}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleUnlinkFile(file.id)}
+                                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1.5 rounded-lg hover:bg-red-50"
+                                title="Unlink file"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-6 text-center">
+                          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                            <ImageIcon className="w-6 h-6 text-gray-400" />
+                          </div>
+                          <p className="text-sm text-gray-500 mb-1">No linked files yet</p>
+                          <p className="text-xs text-gray-400">Link images to use them in your document</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Image Template Section */}
+                    {linkedFiles.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden">
+                          <div className="px-4 py-3 border-b border-blue-200 bg-blue-100/50">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">📷</span>
+                              <span className="text-sm font-semibold text-blue-800">Image Template</span>
+                            </div>
+                          </div>
+                          <div className="p-4">
+                            <p className="text-xs text-blue-600 mb-3">Copy this code to include linked images:</p>
+                            <pre className="text-xs bg-slate-900 text-emerald-400 p-4 rounded-lg overflow-x-auto font-mono shadow-inner">
+{`\\begin{figure}[h!]
+    \\centering
+    \\includegraphics[width=0.8\\textwidth]{filename.png}
+    \\caption{Your Caption Here}
+    \\label{fig:label}
+\\end{figure}`}
+                            </pre>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`\\begin{figure}[h!]
+    \\centering
+    \\includegraphics[width=0.8\\textwidth]{filename.png}
+    \\caption{Your Caption Here}
+    \\label{fig:label}
+\\end{figure}`);
+                                toast.success('Template copied!');
+                              }}
+                              className="mt-3 flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                            >
+                              <Copy className="w-3 h-3" />
+                              Copy Template
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
+                          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                            <span className="text-sm">⚠️</span>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-amber-800">Required Package</p>
+                            <p className="text-xs text-amber-700 mt-1">
+                              Add <code className="px-1.5 py-0.5 bg-amber-100 rounded font-mono text-amber-900">\usepackage&#123;graphicx&#125;</code> to your preamble
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -643,9 +779,11 @@ export default function SubProjectEditorPage({ params }: PageProps) {
                       <div className="text-4xl mb-3 opacity-50">📄</div>
                       <p className="text-gray-500 text-sm font-medium mb-1">No LaTeX Code Yet</p>
                       <p className="text-gray-600 text-xs">
-                        {subProject.sub_project_type === 'table' || subProject.sub_project_type === 'diagram'
-                          ? 'Configure your editor to generate LaTeX'
-                          : 'Process an image to generate LaTeX'}
+                        {subProject.sub_project_type === 'document' 
+                          ? 'Start typing or paste your LaTeX code'
+                          : subProject.sub_project_type === 'table' || subProject.sub_project_type === 'diagram'
+                            ? 'Configure your editor to generate LaTeX'
+                            : 'Process an image to generate LaTeX'}
                       </p>
                     </div>
                   </div>
@@ -672,12 +810,13 @@ export default function SubProjectEditorPage({ params }: PageProps) {
               </div>
               
               {/* Preview Content */}
-              <div className="flex-1 overflow-auto p-4">
+              <div className="flex-1 overflow-hidden bg-gray-100">
                 {latexCode ? (
-                  <div className="h-full">
+                  <div className="h-full p-4">
                     <LatexPreview 
                       latexCode={latexCode} 
-                      type={getPreviewType(subProject.sub_project_type)} 
+                      type={getPreviewType(subProject.sub_project_type)}
+                      subProjectId={subProjectId}
                       onLatexFixed={(fixedLatex) => {
                         setLatexCode(fixedLatex);
                         setHasChanges(true);
@@ -761,6 +900,7 @@ export default function SubProjectEditorPage({ params }: PageProps) {
           onClose={() => setIsExportModalOpen(false)}
           latexCode={latexCode}
           type={getPreviewType(subProject.sub_project_type)}
+          subProjectId={subProjectId}
         />
       )}
     </div>

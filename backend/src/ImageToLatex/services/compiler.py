@@ -26,21 +26,36 @@ class ImageToLatexCompiler:
 		# Optionally wrap code in a minimal LaTeX document
 		return latex_code
 
-	def compile_latex(self, latex_code: str, output_format: str = "png") -> Tuple[bool, Optional[bytes], Optional[str]]:
+	def compile_latex(self, latex_code: str, output_format: str = "png", assets: Optional[list] = None) -> Tuple[bool, Optional[bytes], Optional[str]]:
 		"""
 		Compile LaTeX code to PDF or PNG using Tectonic (preferred) or fallback methods
 		Optimized for mathematical formulas and OCR-generated LaTeX
+		
+		Args:
+			latex_code: The LaTeX source code
+			output_format: Either "pdf" or "png"
+			assets: Optional list of {"filename": str, "content": bytes} dicts for linked files
 		"""
 		try:
 			print(f"ImageToLatexCompiler: Starting compilation to {output_format}")
 			print(f"ImageToLatexCompiler: Temp dir: {self.temp_dir}")
 			print(f"ImageToLatexCompiler: Timeout: {self.timeout}")
 			print(f"ImageToLatexCompiler: Input LaTeX length: {len(latex_code)}")
+			print(f"ImageToLatexCompiler: Assets count: {len(assets) if assets else 0}")
 			if output_format not in ["pdf", "png"]:
 				print("ImageToLatexCompiler: Invalid output format requested.")
 				return False, None, "Invalid output format. Must be 'pdf' or 'png'"
 			with tempfile.TemporaryDirectory(dir=self.temp_dir) as temp_dir:
 				print(f"ImageToLatexCompiler: Using temp_dir: {temp_dir}")
+				
+				# Write asset files (linked images) to temp directory
+				if assets:
+					for asset in assets:
+						asset_path = Path(temp_dir) / asset["filename"]
+						with open(asset_path, 'wb') as f:
+							f.write(asset["content"])
+						print(f"ImageToLatexCompiler: Written asset file: {asset['filename']}")
+				
 				complete_latex = self._create_complete_document(latex_code)
 				tex_file = Path(temp_dir) / "imagetolatex.tex"
 				with open(tex_file, 'w', encoding='utf-8') as f:

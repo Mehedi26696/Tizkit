@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { getProject, getProjectFiles, uploadProjectFile, deleteFile, getFileSignedUrl, getFileTypeFromExtension } from '@/lib/api/projects';
 import { getSubProjects, createSubProject, deleteSubProject, getSubProjectTypeLabel } from '@/lib/api/subProjects';
 import type { Project, ProjectFile, SubProjectListItem, SubProjectType } from '@/types/project';
+import { PREBUILT_PROJECTS } from '@/lib/constants/prebuilt-projects';
 
 interface PageProps {
   params: Promise<{ projectId: string }>;
@@ -107,11 +108,12 @@ export default function ProjectDetailPage({ params }: PageProps) {
   };
 
   // Create sub-project
-  const handleCreateSubProject = async (type: SubProjectType) => {
+  const handleCreateSubProject = async (type: SubProjectType, template?: typeof PREBUILT_PROJECTS[0]) => {
     try {
       const newSubProject = await createSubProject(projectId, {
-        title: `New ${getSubProjectTypeLabel(type)}`,
-        sub_project_type: type
+        title: template ? template.title : `New ${getSubProjectTypeLabel(type)}`,
+        sub_project_type: type,
+        latex_code: template ? template.latex_content : undefined
       });
       setSubProjects(prev => [newSubProject, ...prev]);
       setShowCreateModal(false);
@@ -398,48 +400,86 @@ export default function ProjectDetailPage({ params }: PageProps) {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl"
+              className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-xl font-semibold text-[#1f1e24] mb-4">Create Sub-Project</h3>
               <p className="text-[#1f1e24]/60 mb-6">Choose the type of content you want to create:</p>
               
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => handleCreateSubProject('table')}
-                  className="p-4 rounded-xl border-2 border-[#1f1e24]/10 hover:border-[#FA5F55] hover:bg-[#FA5F55]/5 transition-all text-left"
-                >
-                  <Table className="w-8 h-8 text-[#FA5F55] mb-2" />
-                  <h4 className="font-medium text-[#1f1e24]">Table</h4>
-                  <p className="text-xs text-[#1f1e24]/50">Create LaTeX tables</p>
-                </button>
+              <div className="max-h-[70vh] overflow-y-auto pr-2">
                 
-                <button
-                  onClick={() => handleCreateSubProject('diagram')}
-                  className="p-4 rounded-xl border-2 border-[#1f1e24]/10 hover:border-[#FA5F55] hover:bg-[#FA5F55]/5 transition-all text-left"
-                >
-                  <GitBranch className="w-8 h-8 text-[#FA5F55] mb-2" />
-                  <h4 className="font-medium text-[#1f1e24]">Diagram</h4>
-                  <p className="text-xs text-[#1f1e24]/50">Create TikZ diagrams</p>
-                </button>
-                
-                <button
-                  onClick={() => handleCreateSubProject('imageToLatex')}
-                  className="p-4 rounded-xl border-2 border-[#1f1e24]/10 hover:border-[#FA5F55] hover:bg-[#FA5F55]/5 transition-all text-left"
-                >
-                  <ImageIcon className="w-8 h-8 text-[#FA5F55] mb-2" />
-                  <h4 className="font-medium text-[#1f1e24]">Image to LaTeX</h4>
-                  <p className="text-xs text-[#1f1e24]/50">Convert images to code</p>
-                </button>
-                
-                <button
-                  onClick={() => handleCreateSubProject('handwrittenFlowchart')}
-                  className="p-4 rounded-xl border-2 border-[#1f1e24]/10 hover:border-[#FA5F55] hover:bg-[#FA5F55]/5 transition-all text-left"
-                >
-                  <PenTool className="w-8 h-8 text-[#FA5F55] mb-2" />
-                  <h4 className="font-medium text-[#1f1e24]">Handwritten</h4>
-                  <p className="text-xs text-[#1f1e24]/50">AI flowchart analysis</p>
-                </button>
+                {/* Documents Section */}
+                <div className="mb-6">
+                  <h4 className="text-sm font-medium text-[#1f1e24]/50 uppercase tracking-wider mb-3">Full Documents</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleCreateSubProject('document')}
+                      className="p-4 rounded-xl border-2 border-[#1f1e24]/10 hover:border-[#FA5F55] hover:bg-[#FA5F55]/5 transition-all text-left flex flex-col h-full"
+                    >
+                      <FileText className="w-8 h-8 text-[#FA5F55] mb-2" />
+                      <h4 className="font-medium text-[#1f1e24]">Blank Document</h4>
+                      <p className="text-xs text-[#1f1e24]/50">Start from scratch</p>
+                    </button>
+
+                    {PREBUILT_PROJECTS.map((template) => {
+                      const Icon = template.icon;
+                      return (
+                        <button
+                          key={template.id}
+                          onClick={() => handleCreateSubProject('document', template)}
+                          className="p-4 rounded-xl border-2 border-[#1f1e24]/10 hover:border-[#FA5F55] hover:bg-[#FA5F55]/5 transition-all text-left flex flex-col h-full"
+                        >
+                          <Icon className="w-8 h-8 text-[#FA5F55] mb-2" />
+                          <h4 className="font-medium text-[#1f1e24] line-clamp-1">{template.title}</h4>
+                          <p className="text-xs text-[#1f1e24]/50 line-clamp-2">{template.description}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Tools Section */}
+                <div>
+                  <h4 className="text-sm font-medium text-[#1f1e24]/50 uppercase tracking-wider mb-3">Components & Tools</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleCreateSubProject('table')}
+                      className="p-4 rounded-xl border-2 border-[#1f1e24]/10 hover:border-[#FA5F55] hover:bg-[#FA5F55]/5 transition-all text-left"
+                    >
+                      <Table className="w-8 h-8 text-[#FA5F55] mb-2" />
+                      <h4 className="font-medium text-[#1f1e24]">Table</h4>
+                      <p className="text-xs text-[#1f1e24]/50">Create LaTeX tables</p>
+                    </button>
+                    
+                    <button
+                      onClick={() => handleCreateSubProject('diagram')}
+                      className="p-4 rounded-xl border-2 border-[#1f1e24]/10 hover:border-[#FA5F55] hover:bg-[#FA5F55]/5 transition-all text-left"
+                    >
+                      <GitBranch className="w-8 h-8 text-[#FA5F55] mb-2" />
+                      <h4 className="font-medium text-[#1f1e24]">Diagram</h4>
+                      <p className="text-xs text-[#1f1e24]/50">Create TikZ diagrams</p>
+                    </button>
+                    
+                    <button
+                      onClick={() => handleCreateSubProject('imageToLatex')}
+                      className="p-4 rounded-xl border-2 border-[#1f1e24]/10 hover:border-[#FA5F55] hover:bg-[#FA5F55]/5 transition-all text-left"
+                    >
+                      <ImageIcon className="w-8 h-8 text-[#FA5F55] mb-2" />
+                      <h4 className="font-medium text-[#1f1e24]">Image to LaTeX</h4>
+                      <p className="text-xs text-[#1f1e24]/50">Convert images to code</p>
+                    </button>
+                    
+                    <button
+                      onClick={() => handleCreateSubProject('handwrittenFlowchart')}
+                      className="p-4 rounded-xl border-2 border-[#1f1e24]/10 hover:border-[#FA5F55] hover:bg-[#FA5F55]/5 transition-all text-left"
+                    >
+                      <PenTool className="w-8 h-8 text-[#FA5F55] mb-2" />
+                      <h4 className="font-medium text-[#1f1e24]">Handwritten</h4>
+                      <p className="text-xs text-[#1f1e24]/50">AI flowchart analysis</p>
+                    </button>
+                  </div>
+                </div>
+
               </div>
               
               <button

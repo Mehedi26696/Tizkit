@@ -2,7 +2,7 @@
 
 export type ProjectStatus = 'draft' | 'in_progress' | 'completed' | 'archived';
 export type FileType = 'latex' | 'tikz' | 'markdown' | 'text' | 'image' | 'pdf';
-export type SubProjectType = 'table' | 'diagram' | 'imageToLatex' | 'handwrittenFlowchart';
+export type SubProjectType = 'table' | 'diagram' | 'imageToLatex' | 'handwrittenFlowchart' | 'document';
 
 export interface ProjectFile {
   id: string;

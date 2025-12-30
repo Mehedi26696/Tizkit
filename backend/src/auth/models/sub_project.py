@@ -19,6 +19,7 @@ class SubProjectType(str, Enum):
     DIAGRAM = "diagram"
     IMAGE_TO_LATEX = "imageToLatex"
     HANDWRITTEN_FLOWCHART = "handwrittenFlowchart"
+    DOCUMENT = "document"
 
 
 class SubProject(SQLModel, table=True):

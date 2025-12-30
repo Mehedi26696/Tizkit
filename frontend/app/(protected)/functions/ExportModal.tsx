@@ -7,10 +7,11 @@ interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   latexCode: string;
-  type: 'table' | 'diagram' | 'imageToLatex';
+  type: 'table' | 'diagram' | 'imageToLatex' | 'document';
+  subProjectId?: string;
 }
 
-const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, latexCode, type }) => {
+const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, latexCode, type, subProjectId }) => {
   const [exportFormat, setExportFormat] = useState<'latex' | 'pdf' | 'png'>('latex');
   const [isExporting, setIsExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
@@ -51,6 +52,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, latexCode, t
           type: type,
           latex_code: latexCode,
           output_format: exportFormat as 'pdf' | 'png',
+          sub_project_id: subProjectId,
         });
 
         if (response.data) {
@@ -110,7 +112,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, latexCode, t
           {/* Export Format Selection */}
           <div className="mb-6">
             <label className="block text-sm font-semibold text-gray-700 mb-3 font-aloevera">Select Export Format:</label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setExportFormat('latex')}
                 className={`group relative p-4 rounded-xl border-2 transition-all duration-300 ${
@@ -172,40 +174,6 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, latexCode, t
                 </div>
                 {exportFormat === 'pdf' && (
                   <div className="absolute top-2 right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                )}
-              </button>
-
-              <button
-                onClick={() => setExportFormat('png')}
-                className={`group relative p-4 rounded-xl border-2 transition-all duration-300 ${
-                  exportFormat === 'png'
-                    ? 'border-green-500 bg-gradient-to-br from-green-50 to-green-100 shadow-lg shadow-green-100'
-                    : 'border-gray-200 bg-white hover:border-green-300 hover:shadow-md'
-                }`}
-              >
-                <div className="flex flex-col items-center space-y-2">
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                    exportFormat === 'png'
-                      ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg'
-                      : 'bg-gray-100 group-hover:bg-green-100'
-                  }`}>
-                    <svg className={`w-7 h-7 ${exportFormat === 'png' ? 'text-white' : 'text-gray-600 group-hover:text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div className="text-center">
-                    <div className={`font-semibold font-aloevera ${exportFormat === 'png' ? 'text-green-700' : 'text-gray-700'}`}>
-                      PNG Image
-                    </div>
-                    <div className="text-xs text-gray-500 font-aloevera">.png file</div>
-                  </div>
-                </div>
-                {exportFormat === 'png' && (
-                  <div className="absolute top-2 right-2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
                     <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
