@@ -30,7 +30,8 @@ class CompileRequest(BaseModel):
 @require_credits(ServiceType.TABLE_GENERATION)
 async def generate_table_latex(
     request: TableGenerateRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
 ):
     """
     Generate LaTeX code for a table.
@@ -55,7 +56,8 @@ async def generate_table_latex(
 @require_credits(ServiceType.TABLE_GENERATION)
 async def preview_table(
     request: TableGenerateRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
 ):
     """
     Generate a preview of the table (LaTeX code only).

@@ -26,7 +26,8 @@ handwritten_flowchart_router = APIRouter()
 @require_credits(ServiceType.FLOWCHART_GENERATION)
 async def analyze_handwritten_flowchart(
     image: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
 ):
     """
     Analyze handwritten flowchart image using Gemini Flash 2.0
@@ -88,7 +89,8 @@ async def analyze_handwritten_flowchart(
 @require_credits(ServiceType.FLOWCHART_GENERATION)
 async def generate_latex_from_analysis(
     request: dict,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
 ):
     """
     Generate LaTeX/TikZ code from flowchart analysis data

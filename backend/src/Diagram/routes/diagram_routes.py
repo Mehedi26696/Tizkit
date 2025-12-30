@@ -71,7 +71,8 @@ async def compile_diagram_latex(
 @require_credits(ServiceType.DIAGRAM_GENERATION)
 async def generate_diagram_latex(
     request: DiagramGenerateRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
 ):
     """
     Generate LaTeX code for a TikZ diagram. 
@@ -94,7 +95,8 @@ async def generate_diagram_latex(
 @require_credits(ServiceType.DIAGRAM_GENERATION)
 async def preview_diagram(
     request: DiagramGenerateRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
 ):
     """
     Generate a preview of the diagram (LaTeX code only).
