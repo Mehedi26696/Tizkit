@@ -24,6 +24,9 @@ class CompileRequest(BaseModel):
 
 compile_router = APIRouter()
 
+from ...auth.access import check_sub_project_access
+from uuid import UUID
+
 @compile_router.post("/compile")
 async def compile_latex_endpoint(
     request: CompileRequest,
@@ -35,6 +38,16 @@ async def compile_latex_endpoint(
     Compile LaTeX code to PDF or PNG
     Returns the compiled content on success, or error details on failure
     """
+    # Check access if sub_project_id is provided
+    if request.sub_project_id:
+        try:
+            sub_project_uuid = UUID(request.sub_project_id)
+            sub, project, is_valid = check_sub_project_access(session, sub_project_uuid, current_user.id)
+            if not is_valid:
+                 raise HTTPException(status_code=403, detail="Not authorized to access this project")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid sub_project_id format")
+
     try:
         # Extract credit service and user info from dependency
         credits_service = credit_check["credits_service"]
@@ -44,7 +57,6 @@ async def compile_latex_endpoint(
         assets: List[dict] = []
         if request.sub_project_id:
             try:
-                from uuid import UUID
                 sub_project_uuid = UUID(request.sub_project_id)
                 
                 # Query linked files

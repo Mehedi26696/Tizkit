@@ -32,7 +32,10 @@ class FlowchartToLatexResponse(BaseModel):
     error: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
+from uuid import UUID
+
 class CompileRequest(BaseModel):
     """Request for compiling LaTeX to PDF/PNG"""
     latex_code: str
     output_format: str  # 'pdf' or 'png'
+    sub_project_id: Optional[UUID] = None

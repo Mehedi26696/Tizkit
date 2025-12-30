@@ -27,35 +27,9 @@ from ..schemas.project_schemas import (
 from ...utils.database import get_session
 from ...utils.supabase_storage import storage_service
 from . import get_current_user, User
+from ..access import check_project_access
 
 project_router = APIRouter()
-
-
-def check_project_access(session: Session, project_id: UUID, user_id: UUID) -> tuple[Project | None, bool]:
-    """
-    Check if user has access to project (owner or accepted collaborator).
-    Returns (project, is_owner) tuple.
-    """
-    project = session.get(Project, project_id)
-    if not project:
-        return None, False
-    
-    # Check if owner
-    if project.user_id == user_id:
-        return project, True
-    
-    # Check if accepted collaborator
-    collaborator = session.exec(
-        select(ProjectCollaborator)
-        .where(ProjectCollaborator.project_id == project_id)
-        .where(ProjectCollaborator.user_id == user_id)
-        .where(ProjectCollaborator.status == InvitationStatus.ACCEPTED)
-    ).first()
-    
-    if collaborator:
-        return project, False
-    
-    return None, False
 
 
 # Project CRUD Operations

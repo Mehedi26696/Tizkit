@@ -1,22 +1,33 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
 from fastapi.responses import StreamingResponse, JSONResponse
+from sqlmodel import Session
+from typing import Optional
+from uuid import UUID
 import logging
 import io
+
 from ..services import gemini_flowchart_service, latex_flowchart_generator, flowchart_compiler
 from ..schemas.handwritten_flowchart_schemas import (
     FlowchartAnalysisResponse,
     FlowchartToLatexResponse,
     CompileRequest
 )
+from ...auth.routes import get_current_user, User
+from ...auth.access import check_project_access, check_sub_project_access
+from ...utils.database import get_session
 
 logger = logging.getLogger(__name__)
 
 handwritten_flowchart_router = APIRouter()
 
 @handwritten_flowchart_router.post("/analyze", response_model=FlowchartAnalysisResponse)
-async def analyze_handwritten_flowchart(image: UploadFile = File(...)):
+async def analyze_handwritten_flowchart(
+    image: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
     """
     Analyze handwritten flowchart image using Gemini Flash 2.0
+    Authenticated users only.
     """
     try:
         # Validate file type
@@ -71,9 +82,13 @@ async def analyze_handwritten_flowchart(image: UploadFile = File(...)):
         )
 
 @handwritten_flowchart_router.post("/generate-latex", response_model=FlowchartToLatexResponse)
-async def generate_latex_from_analysis(request: dict):
+async def generate_latex_from_analysis(
+    request: dict,
+    current_user: User = Depends(get_current_user)
+):
     """
     Generate LaTeX/TikZ code from flowchart analysis data
+    Authenticated users only.
     """
     try:
         analysis_data = request.get("analysis_data")
@@ -123,10 +138,21 @@ async def generate_latex_from_analysis(request: dict):
         )
 
 @handwritten_flowchart_router.post("/compile")
-async def compile_flowchart_latex(request: CompileRequest):
+async def compile_flowchart_latex(
+    request: CompileRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
     """
     Compile LaTeX flowchart code to PDF or PNG
+    Authenticated users only. Checks access if sub_project_id provided.
     """
+    # Check access if sub_project_id is provided
+    if request.sub_project_id:
+        sub, project, is_valid = check_sub_project_access(session, request.sub_project_id, current_user.id)
+        if not is_valid:
+             raise HTTPException(status_code=403, detail="Not authorized to access this project")
+
     try:
         success, content, error = flowchart_compiler.compile_latex(
             request.latex_code, 
@@ -153,10 +179,24 @@ async def compile_flowchart_latex(request: CompileRequest):
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @handwritten_flowchart_router.post("/process-complete")
-async def process_complete_flowchart(image: UploadFile = File(...), title: str = None, style: str = "enhanced"):
+async def process_complete_flowchart(
+    image: UploadFile = File(...), 
+    title: str = Form(None), 
+    style: str = Form("enhanced"),
+    sub_project_id: Optional[UUID] = Form(None),
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
     """
     Complete pipeline: analyze handwritten flowchart and return LaTeX code
+    Authenticated users only. Checks access if sub_project_id provided.
     """
+    # Check access if sub_project_id is provided
+    if sub_project_id:
+        sub, project, is_valid = check_sub_project_access(session, sub_project_id, current_user.id)
+        if not is_valid:
+             raise HTTPException(status_code=403, detail="Not authorized to access this project")
+
     try:
         # Step 1: Analyze image
         image_content = await image.read()
