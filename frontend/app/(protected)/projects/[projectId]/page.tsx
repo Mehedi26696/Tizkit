@@ -2,17 +2,19 @@
 
 import React, { use, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Plus, Upload, Loader2, FileText, Image as ImageIcon, 
   Table, GitBranch, PenTool, Trash2, Edit, MoreVertical, FolderOpen,
-  Download, Eye
+  Download, Eye, Users, Crown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getProject, getProjectFiles, uploadProjectFile, deleteFile, getFileSignedUrl, getFileTypeFromExtension } from '@/lib/api/projects';
 import { getSubProjects, createSubProject, deleteSubProject, getSubProjectTypeLabel } from '@/lib/api/subProjects';
 import type { Project, ProjectFile, SubProjectListItem, SubProjectType } from '@/types/project';
 import { PREBUILT_PROJECTS } from '@/lib/constants/prebuilt-projects';
+import CollaboratorsModal from '@/components/CollaboratorsModal';
 
 interface PageProps {
   params: Promise<{ projectId: string }>;
@@ -21,6 +23,7 @@ interface PageProps {
 export default function ProjectDetailPage({ params }: PageProps) {
   const { projectId } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   
   const [project, setProject] = useState<Project | null>(null);
   const [files, setFiles] = useState<ProjectFile[]>([]);
@@ -29,6 +32,9 @@ export default function ProjectDetailPage({ params }: PageProps) {
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'file' | 'subproject'; id: string } | null>(null);
+  const [showCollaborators, setShowCollaborators] = useState(false);
+  
+  const isOwner = user?.id === project?.user_id;
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -194,9 +200,33 @@ export default function ProjectDetailPage({ params }: PageProps) {
               {project.description && (
                 <p className="text-sm text-[#1f1e24]/60">{project.description}</p>
               )}
+              <div className="flex items-center gap-4 mt-2 text-sm text-[#1f1e24]/60">
+                <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-full border border-yellow-100">
+                  <Crown className="w-3 h-3 text-yellow-600" />
+                  <span className="text-xs font-medium text-yellow-800">Owner: {project.owner_name}</span>
+                </div>
+                {project.collaborators && project.collaborators.length > 0 && (
+                  <div className="flex items-center gap-1 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">
+                    <Users className="w-3 h-3 text-purple-600" />
+                    <span className="text-xs font-medium text-purple-800">
+                      Collaborators: {project.collaborators.map(c => c.name).join(', ')}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {isOwner && (
+              <button
+                onClick={() => setShowCollaborators(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#f9f4eb] text-[#1f1e24] rounded-lg border border-[#1f1e24]/20 hover:border-[#FA5F55]/40 transition-all"
+                title="Manage Collaborators"
+              >
+                <Users className="w-4 h-4" />
+                Collaborators
+              </button>
+            )}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploadingFile}
@@ -277,13 +307,15 @@ export default function ProjectDetailPage({ params }: PageProps) {
                         >
                           <Eye className="w-4 h-4 text-[#1f1e24]/70" />
                         </button>
-                        <button
-                          onClick={() => setDeleteConfirm({ type: 'file', id: file.id })}
-                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
+                        {isOwner && (
+                          <button
+                            onClick={() => setDeleteConfirm({ type: 'file', id: file.id })}
+                            className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -367,16 +399,18 @@ export default function ProjectDetailPage({ params }: PageProps) {
                       </div>
                       
                       {/* Delete button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirm({ type: 'subproject', id: subProject.id });
-                        }}
-                        className="absolute top-2 right-2 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-50 rounded-lg transition-all"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
+                      {isOwner && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm({ type: 'subproject', id: subProject.id });
+                          }}
+                          className="absolute top-2 right-2 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-50 rounded-lg transition-all"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </button>
+                      )}
                     </motion.div>
                   ))}
                 </div>
@@ -540,6 +574,15 @@ export default function ProjectDetailPage({ params }: PageProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Collaborators Modal */}
+      <CollaboratorsModal
+        isOpen={showCollaborators}
+        onClose={() => setShowCollaborators(false)}
+        projectId={projectId}
+        projectTitle={project.title}
+        isOwner={isOwner}
+      />
     </div>
   );
 }

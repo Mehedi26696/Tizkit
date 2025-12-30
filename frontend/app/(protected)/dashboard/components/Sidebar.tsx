@@ -14,7 +14,8 @@ import {
   ChevronUp,
   FileText,
   BookOpen,
-  HelpCircle
+  HelpCircle,
+  Mail
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ export default function Sidebar() {
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Templates", href: "/templates", icon: FileCode2 },
+    { name: "Invitations", href: "/invitations", icon: Mail },
     { name: "Pricings", href: "/dashboard/pricings", icon: DollarSign },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];

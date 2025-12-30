@@ -91,6 +91,30 @@ export interface Project {
   tags: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProjectCollaboratorInfo {
+  user_id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+export interface Project {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  status: ProjectStatus;
+  latex_content: string | null;
+  compiled_pdf_url: string | null;
+  preview_image_url: string | null;
+  is_template: boolean;
+  tags: string | null;
+  owner_name: string;
+  collaborators: ProjectCollaboratorInfo[];
+  created_at: string;
+  updated_at: string;
   files: ProjectFile[];
   sub_projects?: SubProjectListItem[];
 }
@@ -103,6 +127,7 @@ export interface ProjectListItem {
   status: ProjectStatus;
   preview_image_url: string | null;
   tags: string | null;
+  role?: 'owner' | 'collaborator';
   created_at: string;
   updated_at: string;
 }

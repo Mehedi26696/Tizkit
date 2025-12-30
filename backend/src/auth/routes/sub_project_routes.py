@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from typing import List
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ..models.project import Project
+from ..models.project_collaborator import ProjectCollaborator, InvitationStatus
 from ..models.sub_project import SubProject, SubProjectType, SubProjectFileLink
 from ..schemas.sub_project_schemas import (
     SubProjectCreate,
@@ -26,6 +27,33 @@ from . import get_current_user, User
 sub_project_router = APIRouter()
 
 
+def check_project_access(session: Session, project_id: UUID, user_id: UUID) -> tuple[Project | None, bool]:
+    """
+    Check if user has access to project (owner or accepted collaborator).
+    Returns (project, is_owner) tuple.
+    """
+    project = session.get(Project, project_id)
+    if not project:
+        return None, False
+    
+    # Check if owner
+    if project.user_id == user_id:
+        return project, True
+    
+    # Check if accepted collaborator
+    collaborator = session.exec(
+        select(ProjectCollaborator)
+        .where(ProjectCollaborator.project_id == project_id)
+        .where(ProjectCollaborator.user_id == user_id)
+        .where(ProjectCollaborator.status == InvitationStatus.ACCEPTED)
+    ).first()
+    
+    if collaborator:
+        return project, False
+    
+    return None, False
+
+
 # SubProject CRUD Operations
 
 @sub_project_router.get("/{project_id}/sub-projects", response_model=List[SubProjectListResponse])
@@ -35,13 +63,9 @@ async def get_project_sub_projects(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Get all sub-projects for a mother project"""
-    # Verify mother project ownership
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Get all sub-projects for a mother project (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
+    
     
     if not project:
         raise HTTPException(
@@ -67,13 +91,8 @@ async def create_sub_project(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Create a new sub-project within a mother project"""
-    # Verify mother project ownership
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Create a new sub-project within a mother project (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
@@ -95,7 +114,7 @@ async def create_sub_project(
     session.add(sub_project)
     
     # Update mother project's updated_at
-    project.updated_at = datetime.utcnow()
+    project.updated_at = datetime.now(timezone.utc)
     session.add(project)
     
     session.commit()
@@ -111,12 +130,19 @@ async def get_sub_project(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Get a specific sub-project with all its data"""
+    """Get a specific sub-project with all its data (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+
     sub_project = session.exec(
         select(SubProject)
         .where(SubProject.id == sub_project_id)
         .where(SubProject.project_id == project_id)
-        .where(SubProject.user_id == current_user.id)
     ).first()
     
     if not sub_project:
@@ -136,12 +162,19 @@ async def update_sub_project(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Update a sub-project"""
+    """Update a sub-project (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+        
     sub_project = session.exec(
         select(SubProject)
         .where(SubProject.id == sub_project_id)
         .where(SubProject.project_id == project_id)
-        .where(SubProject.user_id == current_user.id)
     ).first()
     
     if not sub_project:
@@ -155,14 +188,14 @@ async def update_sub_project(
     for key, value in update_data.items():
         setattr(sub_project, key, value)
     
-    sub_project.updated_at = datetime.utcnow()
+    sub_project.updated_at = datetime.now(timezone.utc)
     
     session.add(sub_project)
     
     # Update mother project's updated_at
     project = session.get(Project, project_id)
     if project:
-        project.updated_at = datetime.utcnow()
+        project.updated_at = datetime.now(timezone.utc)
         session.add(project)
     
     session.commit()
@@ -178,12 +211,25 @@ async def delete_sub_project(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Delete a sub-project"""
+    """Delete a sub-project (owner only)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+    
+    if not is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only project owner can delete sub-projects"
+        )
+
     sub_project = session.exec(
         select(SubProject)
         .where(SubProject.id == sub_project_id)
         .where(SubProject.project_id == project_id)
-        .where(SubProject.user_id == current_user.id)
     ).first()
     
     if not sub_project:
@@ -206,7 +252,7 @@ async def delete_sub_project(
     # Update mother project's updated_at
     project = session.get(Project, project_id)
     if project:
-        project.updated_at = datetime.utcnow()
+        project.updated_at = datetime.now(timezone.utc)
         session.add(project)
     
     session.commit()
@@ -220,12 +266,19 @@ async def autosave_sub_project(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Auto-save sub-project content (LaTeX and editor state)"""
+    """Auto-save sub-project content (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+        
     sub_project = session.exec(
         select(SubProject)
         .where(SubProject.id == sub_project_id)
         .where(SubProject.project_id == project_id)
-        .where(SubProject.user_id == current_user.id)
     ).first()
     
     if not sub_project:
@@ -240,9 +293,15 @@ async def autosave_sub_project(
     if save_data.editor_data is not None:
         sub_project.editor_data = save_data.editor_data
     
-    sub_project.updated_at = datetime.utcnow()
+    sub_project.updated_at = datetime.now(timezone.utc)
     
     session.add(sub_project)
+    
+    # Update mother project's updated_at
+    if project:
+        project.updated_at = datetime.now(timezone.utc)
+        session.add(project)
+        
     session.commit()
     session.refresh(sub_project)
     
@@ -262,12 +321,19 @@ async def get_sub_project_files(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Get all files linked to a sub-project"""
+    """Get all files linked to a sub-project (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+        
     sub_project = session.exec(
         select(SubProject)
         .where(SubProject.id == sub_project_id)
         .where(SubProject.project_id == project_id)
-        .where(SubProject.user_id == current_user.id)
     ).first()
     
     if not sub_project:
@@ -292,12 +358,19 @@ async def link_file_to_sub_project(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Link a file from the mother project to a sub-project"""
+    """Link a file from the mother project to a sub-project (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+        
     sub_project = session.exec(
         select(SubProject)
         .where(SubProject.id == sub_project_id)
         .where(SubProject.project_id == project_id)
-        .where(SubProject.user_id == current_user.id)
     ).first()
     
     if not sub_project:
@@ -337,12 +410,19 @@ async def unlink_file_from_sub_project(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Remove a file link from a sub-project"""
+    """Remove a file link from a sub-project (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+        
     sub_project = session.exec(
         select(SubProject)
         .where(SubProject.id == sub_project_id)
         .where(SubProject.project_id == project_id)
-        .where(SubProject.user_id == current_user.id)
     ).first()
     
     if not sub_project:

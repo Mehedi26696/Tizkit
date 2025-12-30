@@ -3,9 +3,10 @@ Project models for storing user projects and files.
 """
 
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, DateTime
 from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 if TYPE_CHECKING:
@@ -49,8 +50,14 @@ class Project(SQLModel, table=True):
     is_template: bool = Field(default=False)
     tags: Optional[str] = Field(default=None)  # Comma-separated tags
     
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
     
     # Relationships
     files: List["ProjectFile"] = Relationship(back_populates="project")
@@ -73,8 +80,14 @@ class ProjectFile(SQLModel, table=True):
     # For ordering files in project
     order_index: int = Field(default=0)
     
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
     
     # Relationships
     project: Optional[Project] = Relationship(back_populates="files")

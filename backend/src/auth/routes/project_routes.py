@@ -4,13 +4,14 @@ Project API routes.
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session, select
+from sqlmodel import Session, select, or_
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 import io
 
 from ..models.project import Project, ProjectFile, ProjectStatus, FileType
+from ..models.project_collaborator import ProjectCollaborator, InvitationStatus
 from ..schemas.project_schemas import (
     ProjectCreate,
     ProjectUpdate,
@@ -20,13 +21,41 @@ from ..schemas.project_schemas import (
     FileUpdate,
     ProjectFileResponse,
     AutoSaveRequest,
-    AutoSaveResponse
+    AutoSaveResponse,
+    ProjectCollaboratorInfo
 )
 from ...utils.database import get_session
 from ...utils.supabase_storage import storage_service
 from . import get_current_user, User
 
 project_router = APIRouter()
+
+
+def check_project_access(session: Session, project_id: UUID, user_id: UUID) -> tuple[Project | None, bool]:
+    """
+    Check if user has access to project (owner or accepted collaborator).
+    Returns (project, is_owner) tuple.
+    """
+    project = session.get(Project, project_id)
+    if not project:
+        return None, False
+    
+    # Check if owner
+    if project.user_id == user_id:
+        return project, True
+    
+    # Check if accepted collaborator
+    collaborator = session.exec(
+        select(ProjectCollaborator)
+        .where(ProjectCollaborator.project_id == project_id)
+        .where(ProjectCollaborator.user_id == user_id)
+        .where(ProjectCollaborator.status == InvitationStatus.ACCEPTED)
+    ).first()
+    
+    if collaborator:
+        return project, False
+    
+    return None, False
 
 
 # Project CRUD Operations
@@ -37,8 +66,21 @@ async def get_user_projects(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Get all projects for the current user"""
-    query = select(Project).where(Project.user_id == current_user.id)
+    """Get all projects for the current user (owned and shared)"""
+    # Get IDs of projects where user is an accepted collaborator
+    collab_project_ids = session.exec(
+        select(ProjectCollaborator.project_id)
+        .where(ProjectCollaborator.user_id == current_user.id)
+        .where(ProjectCollaborator.status == InvitationStatus.ACCEPTED)
+    ).all()
+    
+    # Query for owned projects OR shared projects
+    query = select(Project).where(
+        or_(
+            Project.user_id == current_user.id,
+            Project.id.in_(collab_project_ids) if collab_project_ids else False
+        )
+    )
     
     if status_filter:
         query = query.where(Project.status == status_filter)
@@ -46,7 +88,24 @@ async def get_user_projects(
     query = query.order_by(Project.updated_at.desc())
     projects = session.exec(query).all()
     
-    return projects
+    # Create response with role
+    result = []
+    for project in projects:
+        role = "owner" if project.user_id == current_user.id else "collaborator"
+        result.append(ProjectListResponse(
+            id=project.id,
+            user_id=project.user_id,
+            title=project.title,
+            description=project.description,
+            status=project.status,
+            preview_image_url=project.preview_image_url,
+            tags=project.tags,
+            created_at=project.created_at,
+            updated_at=project.updated_at,
+            role=role
+        ))
+    
+    return result
 
 
 @project_router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
@@ -78,20 +137,41 @@ async def get_project(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Get a specific project with all its files"""
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Get a specific project with all its files (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
+        
+    # Get owner name
+    owner = session.get(User, project.user_id)
+    owner_name = owner.full_name or owner.username if owner else "Unknown"
     
-    return project
+    # Get collaborators
+    collaborators = session.exec(
+        select(User, ProjectCollaborator)
+        .join(ProjectCollaborator, User.id == ProjectCollaborator.user_id)
+        .where(ProjectCollaborator.project_id == project_id)
+        .where(ProjectCollaborator.status == InvitationStatus.ACCEPTED)
+    ).all()
+    
+    collaborator_list = []
+    for user, collab in collaborators:
+        collaborator_list.append(ProjectCollaboratorInfo(
+            user_id=user.id,
+            name=user.full_name or user.username,
+            email=user.email,
+            role=collab.role
+        ))
+        
+    response = ProjectResponse.model_validate(project)
+    response.owner_name = owner_name
+    response.collaborators = collaborator_list
+    
+    return response
 
 
 @project_router.put("/{project_id}", response_model=ProjectResponse)
@@ -102,11 +182,7 @@ async def update_project(
     session: Session = Depends(get_session)
 ):
     """Update a project"""
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
@@ -119,13 +195,38 @@ async def update_project(
     for key, value in update_data.items():
         setattr(project, key, value)
     
-    project.updated_at = datetime.utcnow()
+    project.updated_at = datetime.now(timezone.utc)
     
     session.add(project)
     session.commit()
     session.refresh(project)
     
-    return project
+    # Get owner name
+    owner = session.get(User, project.user_id)
+    owner_name = owner.full_name or owner.username if owner else "Unknown"
+    
+    # Get collaborators
+    collaborators = session.exec(
+        select(User, ProjectCollaborator)
+        .join(ProjectCollaborator, User.id == ProjectCollaborator.user_id)
+        .where(ProjectCollaborator.project_id == project_id)
+        .where(ProjectCollaborator.status == InvitationStatus.ACCEPTED)
+    ).all()
+    
+    collaborator_list = []
+    for user, collab in collaborators:
+        collaborator_list.append(ProjectCollaboratorInfo(
+            user_id=user.id,
+            name=user.full_name or user.username,
+            email=user.email,
+            role=collab.role
+        ))
+        
+    response = ProjectResponse.model_validate(project)
+    response.owner_name = owner_name
+    response.collaborators = collaborator_list
+    
+    return response
 
 
 @project_router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -134,17 +235,19 @@ async def delete_project(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Delete a project and all its files"""
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Delete a project and all its files (owner only)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
+        )
+    
+    if not is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only project owner can delete the project"
         )
     
     # Delete all associated files first
@@ -166,12 +269,8 @@ async def autosave_project(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Auto-save project content"""
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Auto-save project content (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
@@ -180,7 +279,7 @@ async def autosave_project(
         )
     
     project.latex_content = save_data.latex_content
-    project.updated_at = datetime.utcnow()
+    project.updated_at = datetime.now(timezone.utc)
     
     session.add(project)
     session.commit()
@@ -200,13 +299,8 @@ async def get_project_files(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Get all files for a project"""
-    # Verify project ownership
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Get all files for a project (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
@@ -230,13 +324,8 @@ async def create_file(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Add a new file to a project"""
-    # Verify project ownership
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Add a new file to a project (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
@@ -258,7 +347,7 @@ async def create_file(
     session.refresh(file)
     
     # Update project's updated_at
-    project.updated_at = datetime.utcnow()
+    project.updated_at = datetime.now(timezone.utc)
     session.add(project)
     session.commit()
     
@@ -273,13 +362,8 @@ async def update_file(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Update a file in a project"""
-    # Verify project ownership
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Update a file in a project (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
@@ -303,15 +387,14 @@ async def update_file(
     update_data = file_data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(file, key, value)
-    
-    file.updated_at = datetime.utcnow()
+    file.updated_at = datetime.now(timezone.utc)
     
     session.add(file)
     session.commit()
     session.refresh(file)
     
     # Update project's updated_at
-    project.updated_at = datetime.utcnow()
+    project.updated_at = datetime.now(timezone.utc)
     session.add(project)
     session.commit()
     
@@ -325,18 +408,19 @@ async def delete_file(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Delete a file from a project"""
-    # Verify project ownership
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Delete a file from a project (owner only)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
+        )
+    
+    if not is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only project owner can delete files"
         )
     
     file = session.exec(
@@ -359,7 +443,7 @@ async def delete_file(
     session.commit()
     
     # Update project's updated_at
-    project.updated_at = datetime.utcnow()
+    project.updated_at = datetime.now(timezone.utc)
     session.add(project)
     session.commit()
 
@@ -375,13 +459,8 @@ async def upload_project_file(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Upload a file to a project using Supabase Storage"""
-    # Verify project ownership
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Upload a file to a project using Supabase Storage (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
@@ -428,7 +507,7 @@ async def upload_project_file(
     session.refresh(project_file)
     
     # Update project's updated_at
-    project.updated_at = datetime.utcnow()
+    project.updated_at = datetime.now(timezone.utc)
     session.add(project)
     session.commit()
     
@@ -442,13 +521,8 @@ async def download_project_file(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Download a file from a project"""
-    # Verify project ownership
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Download a file from a project (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
@@ -516,13 +590,8 @@ async def get_file_signed_url(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Get a signed URL for a file (for direct browser access)"""
-    # Verify project ownership
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Get a signed URL for a file (for direct browser access) (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
@@ -560,13 +629,8 @@ async def upload_tex_content(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    """Upload a .tex file and set it as the project's main LaTeX content"""
-    # Verify project ownership
-    project = session.exec(
-        select(Project)
-        .where(Project.id == project_id)
-        .where(Project.user_id == current_user.id)
-    ).first()
+    """Upload a .tex file and set it as the project's main LaTeX content (owner or collaborator)"""
+    project, is_owner = check_project_access(session, project_id, current_user.id)
     
     if not project:
         raise HTTPException(
@@ -580,7 +644,7 @@ async def upload_tex_content(
     
     # Update project with LaTeX content
     project.latex_content = latex_content
-    project.updated_at = datetime.utcnow()
+    project.updated_at = datetime.now(timezone.utc)
     
     # Also save to Supabase as a backup
     upload_result = await storage_service.upload_file(
@@ -608,4 +672,29 @@ async def upload_tex_content(
     session.commit()
     session.refresh(project)
     
-    return project
+    # Get owner name
+    owner = session.get(User, project.user_id)
+    owner_name = owner.full_name or owner.username if owner else "Unknown"
+    
+    # Get collaborators
+    collaborators = session.exec(
+        select(User, ProjectCollaborator)
+        .join(ProjectCollaborator, User.id == ProjectCollaborator.user_id)
+        .where(ProjectCollaborator.project_id == project_id)
+        .where(ProjectCollaborator.status == InvitationStatus.ACCEPTED)
+    ).all()
+    
+    collaborator_list = []
+    for user, collab in collaborators:
+        collaborator_list.append(ProjectCollaboratorInfo(
+            user_id=user.id,
+            name=user.full_name or user.username,
+            email=user.email,
+            role=collab.role
+        ))
+        
+    response = ProjectResponse.model_validate(project)
+    response.owner_name = owner_name
+    response.collaborators = collaborator_list
+    
+    return response

@@ -5,7 +5,7 @@ Supabase Storage Service for handling file uploads/downloads
 import os
 import uuid
 from typing import Optional, BinaryIO
-from datetime import datetime
+from datetime import datetime, timezone
 import httpx
 from src.config import settings
 
@@ -31,7 +31,7 @@ class SupabaseStorageService:
         """Generate organized file path: user_id/project_id/filename"""
         # Sanitize filename and add timestamp to prevent conflicts
         safe_filename = "".join(c for c in filename if c.isalnum() or c in "._-")
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         unique_id = str(uuid.uuid4())[:8]
         name, ext = os.path.splitext(safe_filename)
         return f"{user_id}/{project_id}/{name}_{timestamp}_{unique_id}{ext}"

@@ -2,10 +2,10 @@
 SubProject Pydantic schemas for API validation.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 from typing import Optional, List
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -65,6 +65,12 @@ class SubProjectResponse(BaseModel):
     is_completed: bool
     created_at: datetime
     updated_at: datetime
+    
+    @field_serializer('created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
 
     class Config:
         from_attributes = True
@@ -82,6 +88,12 @@ class SubProjectListResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @field_serializer('created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+
     class Config:
         from_attributes = True
 
@@ -91,6 +103,12 @@ class SubProjectAutoSaveResponse(BaseModel):
     success: bool
     message: str
     updated_at: datetime
+
+    @field_serializer('updated_at')
+    def serialize_dt(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
 
 
 # File Link Schemas
@@ -108,6 +126,12 @@ class SubProjectFileLinkResponse(BaseModel):
     project_file_id: UUID
     usage_type: str
     created_at: datetime
+
+    @field_serializer('created_at')
+    def serialize_dt(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
 
     class Config:
         from_attributes = True

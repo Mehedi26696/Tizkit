@@ -3,10 +3,10 @@ SubProject model for individual work items within a project.
 """
 
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, Text
+from sqlalchemy import Column, Text, DateTime
 from typing import Optional, TYPE_CHECKING
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 if TYPE_CHECKING:
@@ -59,8 +59,14 @@ class SubProject(SQLModel, table=True):
     is_completed: bool = Field(default=False)
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
     
     # Relationships
     project: Optional["Project"] = Relationship(back_populates="sub_projects")
@@ -81,4 +87,7 @@ class SubProjectFileLink(SQLModel, table=True):
     # How the file is used
     usage_type: str = Field(default="reference", max_length=50)  # reference, source, output
     
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )

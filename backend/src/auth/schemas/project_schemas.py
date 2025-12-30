@@ -2,9 +2,9 @@
 Pydantic schemas for project API.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from enum import Enum
 
@@ -44,9 +44,23 @@ class ProjectFileResponse(BaseModel):
     order_index: int
     created_at: datetime
     updated_at: datetime
+    
+    @field_serializer('created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
 
     class Config:
         from_attributes = True
+
+
+class ProjectCollaboratorInfo(BaseModel):
+    """Schema for collaborator info in project response"""
+    user_id: UUID
+    name: str
+    email: str
+    role: str
 
 
 class ProjectResponse(BaseModel):
@@ -61,8 +75,16 @@ class ProjectResponse(BaseModel):
     preview_image_url: Optional[str] = None
     is_template: bool
     tags: Optional[str] = None
+    owner_name: str = "Unknown"
+    collaborators: List[ProjectCollaboratorInfo] = []
     created_at: datetime
     updated_at: datetime
+    
+    @field_serializer('created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
     files: List[ProjectFileResponse] = []
 
     class Config:
@@ -78,8 +100,15 @@ class ProjectListResponse(BaseModel):
     status: ProjectStatus
     preview_image_url: Optional[str] = None
     tags: Optional[str] = None
+    role: str = "owner"
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer('created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
 
     class Config:
         from_attributes = True
@@ -114,4 +143,10 @@ class AutoSaveResponse(BaseModel):
     """Schema for auto-save response"""
     success: bool
     saved_at: datetime
+    
+    @field_serializer('saved_at')
+    def serialize_dt(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
     project_id: UUID

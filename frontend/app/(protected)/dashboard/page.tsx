@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardHeader from "./components/DashboardHeader";
-import { Plus, Search, Copy, Trash2, ExternalLink, Archive, Loader2, FileText, Pencil, MoreVertical, Check, X } from "lucide-react";
+import { Plus, Search, Copy, Trash2, ExternalLink, Archive, Loader2, FileText, Pencil, MoreVertical, Check, X, Crown, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -387,6 +387,19 @@ export default function DashboardPage() {
                               {project.description}
                             </p>
                           )}
+                          <div className="flex items-center gap-2 mt-1.5">
+                            {project.role === 'collaborator' ? (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                                <Users className="w-3 h-3" />
+                                Collaborator
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                                <Crown className="w-3 h-3" />
+                                Owner
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="relative" ref={statusMenuOpen === project.id ? statusMenuRef : null}>
@@ -467,15 +480,17 @@ export default function DashboardPage() {
                             >
                               <Copy className="w-4 h-4 text-[#1f1e24]/70" />
                             </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete"
-                              onClick={() => setDeleteConfirm(project.id)}
-                            >
-                              <Trash2 className="w-4 h-4 text-red-500" />
-                            </motion.button>
+                            {project.role !== 'collaborator' && (
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete"
+                                onClick={() => setDeleteConfirm(project.id)}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </motion.button>
+                            )}
                           </div>
                         </td>
                       </motion.tr>

@@ -141,6 +141,13 @@ try:
 except Exception:
     logger.exception("Failed to import/include template router")
 
+# Collaboration routes
+try:
+    from src.auth.routes.collaboration_routes import collaboration_router as _collaboration_router
+    app.include_router(_collaboration_router, prefix="/api", tags=["collaboration"])
+except Exception:
+    logger.exception("Failed to import/include collaboration router")
+
 
  
 

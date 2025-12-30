@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel
 
 from ..models.user_template import UserTemplate
@@ -129,7 +129,7 @@ async def update_template(
     for key, value in update_data.items():
         setattr(template, key, value)
     
-    template.updated_at = datetime.utcnow()
+    template.updated_at = datetime.now(timezone.utc)
     
     session.add(template)
     session.commit()
