@@ -13,58 +13,88 @@ Unlike standard editors (Overleaf), TizKit focuses on **Component-Based Engineer
 
 ## 🏗 System Architecture
 
-TizKit is built on a distributed service architecture optimized for high concurrency, real-time visual feedback, and reliable data persistence via a cloud-native database.
+TizKit is built on a distributed service architecture designed for high availability, real-time visual feedback, and reliable data persistence. The system is divided into four distinct layers:
 
-### 🧩 High-Level Overview
-The architecture offloads expense operations (AI, Compilation) to specialized micro-services while maintaining fluid UI state.
+### 1. Unified Frontend (Gateway)
+The frontend serves as the primary interface and client-side manager.
+- **Framework**: Next.js 16 (App Router) with React 19.
+- **Responsibility**: Manages optimistic UI updates, local state synchronization, and handles complex visual editing through `React-Konva`.
+- **PDF Rendering**: Utilizes a dedicated rendering pipeline for multi-page PDF previews, providing a high-fidelity viewing experience comparable to desktop LaTeX suites.
 
+### 2. Backend Orchestrator
+A high-performance FastAPI server that acts as the brain of the platform.
+- **Business Logic**: Orchestrates project management, collaborator permissions (RBAC), and service routing.
+- **Credit Lifecycle Management**: Implements a middleware-driven credit enforcement system. Every costly operation (OCR, Flowchart generation, etc.) is validated against a PostgreSQL-backed credit ledger before execution.
+- **Security**: Stateless authentication via JWT, with granular project access control logic ensuring data isolation.
+
+### 3. Engine Tier (Specialized Services)
+The backend delegates computationally intensive tasks to specialized engines:
+- **🧠 AI Vision Engine**: Powered by Gemini 2.0 Flash, this engine performs semantic extraction of mathematical formulas and handwritten diagrams.
+- **⚡ Tectonic Compilation Engine**: A Rust-based LaTeX distribution that executes inside isolated environments. It fetches only the required packages on-the-fly, ensuring fast and consistent builds without the overhead of a full TeX Live installation.
+- **🔍 OCR Text Engine**: Specialized for high-accuracy text extraction from academic documents and textbook captures.
+
+### 4. Cloud Persistence Layer
+Powered by Supabase, providing a robust backbone for all data.
+- **Relational DB**: PostgreSQL managed through SQLModel. Stores users, projects, sub-projects, collaborations, and a comprehensive audit log of credit transactions.
+- **Object Storage**: S3-compatible buckets for persisting user assets (images, PDFs) and compiled outputs.
+
+### 🧩 High-Level Architecture
 ```mermaid
 graph TD
-    %% User Tier
-    User((User)) <--> Frontend["Next.js 16 Gateway<br/>(React 19 / Konva / Tailwind 4)"]
+    subgraph "User Tier"
+        User((User)) <--> Frontend["Next.js 16 Gateway<br/>(React 19 / Konva / Tailwind 4)"]
+    end
 
-    %% Logic Tier
-    Frontend <--> Backend["FastAPI Orchestrator<br/>(Business Logic / JWT Auth)"]
+    subgraph "Logic Tier"
+        Frontend <--> Backend["FastAPI Orchestrator<br/>(JWT Auth / Credit Middleware)"]
+    end
 
-    %% Data Tier
-    Backend <--> DB[(Supabase PostgreSQL<br/>Project & User Persistence)]
-
-    %% Service Tier
-    Backend --> Gemini["AI Engine<br/>(Gemini 2.0 Flash Vision)"]
-    Backend --> OCR["Text Engine<br/>(OCR Service)"]
-    Backend --> Tectonic["Compilation Engine<br/>(Tectonic Typeface Suite)"]
+    subgraph "Service Engine Tier"
+        Backend --> Gemini["AI Engine<br/>(Gemini 2.0 Flash)"]
+        Backend --> OCR["Text Engine<br/>(OCR.space API)"]
+        Backend --> Tectonic["Compilation Engine<br/>(Tectonic PDF Suite)"]
+    end
     
-    %% Asset Tier
-    Backend --> Files["Asset Storage<br/>(Supabase S3 Buckets)"]
+    subgraph "Persistence Tier"
+        Backend <--> DB[(PostgreSQL Supabase<br/>Relational Data)]
+        Backend --> S3["Asset Storage<br/>(S3 Buckets)"]
+    end
 ```
 
-### ⚡ Complete Data Lifecycle
-From a user's keystroke to the final cloud save.
+### ⚡ Credit Enforcement & Data Lifecycle
+This lifecycle ensures that every expensive AI or compilation operation is authorized and billed correctly.
 
 ```mermaid
 sequenceDiagram
     participant U as User
     participant F as Frontend
-    participant B as Backend
-    participant D as Database
-    participant C as Tectonic
+    participant B as Backend (Middlewares)
+    participant Cr as Credit Service
+    participant En as Service Engines
+    participant DB as PostgreSQL
 
-    Note over U,F: 1. Visual Editing
-    U->>F: Drag Table Row / Move Node
-    F->>F: Optimistic UI Update
-    F->>B: POST /autosave (Debounced 1s)
-    B->>D: Upsert SubProject State (JSON)
-    D-->>B: Success (Timestamp)
-    B-->>F: Update "Last Saved" Indicator
-
-    Note over U,C: 2. Compilation
-    U->>F: Click "Preview PDF"
-    F->>B: POST /compile
-    B->>C: Stream LaTeX Code
-    C->>C: Fetch Packages & Build
-    C-->>B: Return PDF Binary
-    B-->>F: Blob URL
-    F-->>U: Render PDF Viewer
+    Note over U,F: 1. Service Request
+    U->>F: Request Compilation / AI Feature
+    F->>B: POST /api/v1/service
+    
+    Note over B,Cr: 2. Credit Validation (Middleware)
+    B->>Cr: check_credits_availability(user_id, service_type)
+    Cr->>DB: Query current balance
+    DB-->>Cr: Return credits
+    Cr-->>B: Return availability (allow/block)
+    
+    alt Insufficient Credits
+        B-->>F: HTTP 402 Payment Required
+        F-->>U: Show Top-up Modal
+    else Sufficient Credits
+        Note over B,En: 3. Execution
+        B->>En: Execute (Tectonic/Gemini)
+        En-->>B: Return Result (PDF/LaTeX)
+        B->>Cr: consume_credits(...)
+        Cr->>DB: Update ledger & balance
+        B-->>F: Return Result + New Balance
+        F-->>U: Render Output
+    end
 ```
 
 ---
