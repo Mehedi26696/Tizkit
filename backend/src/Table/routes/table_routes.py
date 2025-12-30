@@ -12,6 +12,8 @@ from ..services.latex_generator import table_latex_generator
 from ..services.compiler import TableLatexCompiler
 from ...auth.routes import get_current_user, User
 from ...auth.access import check_sub_project_access
+from ...auth.middleware.credits_middleware import require_credits
+from ...auth.models.credits import ServiceType
 from ...utils.database import get_session
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,7 @@ class CompileRequest(BaseModel):
     sub_project_id: Optional[UUID] = None
 
 @table_router.post("/generate", response_model=TableGenerateResponse)
+@require_credits(ServiceType.TABLE_GENERATION)
 async def generate_table_latex(
     request: TableGenerateRequest,
     current_user: User = Depends(get_current_user)
@@ -49,6 +52,7 @@ async def generate_table_latex(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @table_router.post("/preview")
+@require_credits(ServiceType.TABLE_GENERATION)
 async def preview_table(
     request: TableGenerateRequest,
     current_user: User = Depends(get_current_user)
@@ -71,6 +75,7 @@ async def preview_table(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @table_router.post("/compile")
+@require_credits(ServiceType.LATEX_COMPILATION)
 async def compile_table_latex(
     request: CompileRequest,
     current_user: User = Depends(get_current_user),

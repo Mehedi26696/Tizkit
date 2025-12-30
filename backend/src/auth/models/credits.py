@@ -36,6 +36,7 @@ class ServiceType(str, Enum):
     AI_LATEX_FIXING = "ai_latex_fixing"
     DIAGRAM_GENERATION = "diagram_generation"
     TABLE_GENERATION = "table_generation"
+    FLOWCHART_GENERATION = "flowchart_generation"
 
 
 class UserSubscription(SQLModel, table=True):

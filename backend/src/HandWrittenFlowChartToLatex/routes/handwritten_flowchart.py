@@ -14,6 +14,8 @@ from ..schemas.handwritten_flowchart_schemas import (
 )
 from ...auth.routes import get_current_user, User
 from ...auth.access import check_project_access, check_sub_project_access
+from ...auth.middleware.credits_middleware import require_credits
+from ...auth.models.credits import ServiceType
 from ...utils.database import get_session
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,7 @@ logger = logging.getLogger(__name__)
 handwritten_flowchart_router = APIRouter()
 
 @handwritten_flowchart_router.post("/analyze", response_model=FlowchartAnalysisResponse)
+@require_credits(ServiceType.FLOWCHART_GENERATION)
 async def analyze_handwritten_flowchart(
     image: UploadFile = File(...),
     current_user: User = Depends(get_current_user)
@@ -82,6 +85,7 @@ async def analyze_handwritten_flowchart(
         )
 
 @handwritten_flowchart_router.post("/generate-latex", response_model=FlowchartToLatexResponse)
+@require_credits(ServiceType.FLOWCHART_GENERATION)
 async def generate_latex_from_analysis(
     request: dict,
     current_user: User = Depends(get_current_user)
@@ -138,6 +142,7 @@ async def generate_latex_from_analysis(
         )
 
 @handwritten_flowchart_router.post("/compile")
+@require_credits(ServiceType.LATEX_COMPILATION)
 async def compile_flowchart_latex(
     request: CompileRequest,
     current_user: User = Depends(get_current_user),
@@ -179,6 +184,7 @@ async def compile_flowchart_latex(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @handwritten_flowchart_router.post("/process-complete")
+@require_credits(ServiceType.FLOWCHART_GENERATION)
 async def process_complete_flowchart(
     image: UploadFile = File(...), 
     title: str = Form(None), 

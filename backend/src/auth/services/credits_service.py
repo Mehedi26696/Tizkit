@@ -28,7 +28,7 @@ class CreditsService:
         self.session = session
     
     # Default credit configurations
-    DAILY_FREE_CREDITS = 50  # Free users get 50 credits daily
+    DAILY_FREE_CREDITS = 1000  # Free users get 1000 credits daily
     PRO_UNLIMITED = -1  # Pro users have unlimited credits
     
     # Services that are completely free (no credits required)
@@ -43,6 +43,7 @@ class CreditsService:
         ServiceType.LATEX_COMPILATION: 3,
         ServiceType.DIAGRAM_GENERATION: 5,
         ServiceType.TABLE_GENERATION: 3,
+        ServiceType.FLOWCHART_GENERATION: 15,
     }
     
     async def initialize_user_credits(self, user_id: UUID) -> UserCredits:

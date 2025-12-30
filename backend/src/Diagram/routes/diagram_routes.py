@@ -12,6 +12,8 @@ from ..services.latex_generator import diagram_latex_generator
 from ..services.compiler import DiagramLatexCompiler
 from ...auth.routes import get_current_user, User
 from ...auth.access import check_project_access, check_sub_project_access
+from ...auth.middleware.credits_middleware import require_credits
+from ...auth.models.credits import ServiceType
 from ...utils.database import get_session
 
 logger = logging.getLogger(__name__)
@@ -26,6 +28,7 @@ class CompileRequest(BaseModel):
     sub_project_id: Optional[UUID] = None
 
 @diagram_router.post("/compile")
+@require_credits(ServiceType.LATEX_COMPILATION)
 async def compile_diagram_latex(
     request: CompileRequest,
     current_user: User = Depends(get_current_user),
@@ -65,6 +68,7 @@ async def compile_diagram_latex(
         )
 
 @diagram_router.post("/generate", response_model=DiagramGenerateResponse)
+@require_credits(ServiceType.DIAGRAM_GENERATION)
 async def generate_diagram_latex(
     request: DiagramGenerateRequest,
     current_user: User = Depends(get_current_user)
@@ -87,6 +91,7 @@ async def generate_diagram_latex(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @diagram_router.post("/preview")
+@require_credits(ServiceType.DIAGRAM_GENERATION)
 async def preview_diagram(
     request: DiagramGenerateRequest,
     current_user: User = Depends(get_current_user)
