@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, FolderKanban, DollarSign, Settings, LogOut } from "lucide-react";
+import { Home, FileCode2, DollarSign, Settings, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -13,7 +13,7 @@ export default function Sidebar() {
   
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
-    { name: "Projects", href: "/projects", icon: FolderKanban },
+    { name: "Templates", href: "/templates", icon: FileCode2 },
     { name: "Pricings", href: "/dashboard/pricings", icon: DollarSign },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];

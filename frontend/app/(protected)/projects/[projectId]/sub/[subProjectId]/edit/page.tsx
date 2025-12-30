@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Save, Loader2, Copy, Download, Settings, 
   Table, GitBranch, Image as ImageIcon, PenTool, Check, X,
-  FileText, ChevronRight, Upload, Eye, GripVertical
+  FileText, ChevronRight, Upload, Eye, GripVertical, RotateCcw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -89,6 +89,18 @@ export default function SubProjectEditorPage({ params }: PageProps) {
         }
         
         setEditTitle(subProjectData.title);
+
+        // For image processing types, automatically select the first linked image if exists
+        if ((subProjectData.sub_project_type === 'imageToLatex' || 
+             subProjectData.sub_project_type === 'handwrittenFlowchart') && 
+            linksData.length > 0) {
+          const firstImageLink = linksData[0];
+          const file = filesData.find(f => f.id === firstImageLink.project_file_id);
+          if (file && file.file_url) {
+            const { url } = await getFileSignedUrl(projectId, file.id);
+            setSelectedImage({ url, filename: file.filename, fileId: file.id });
+          }
+        }
       } catch (error) {
         console.error('Failed to load sub-project:', error);
         toast.error('Failed to load sub-project');
@@ -134,6 +146,19 @@ export default function SubProjectEditorPage({ params }: PageProps) {
       }
     };
   }, [hasChanges, performAutoSave]);
+  
+  // Keyboard shortcut for saving (Ctrl+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        performAutoSave();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [performAutoSave]);
 
   // Generate LaTeX when editor data changes
   useEffect(() => {
@@ -144,9 +169,7 @@ export default function SubProjectEditorPage({ params }: PageProps) {
         setIsCompiling(true);
         
         let result;
-        if (subProject.sub_project_type === 'table') {
-          result = await latexService.generateLatex({ type: 'table', data: editorData });
-        } else if (subProject.sub_project_type === 'diagram') {
+        if (subProject.sub_project_type === 'diagram') {
           result = await latexService.generateLatex({ type: 'diagram', data: editorData });
         }
         
@@ -166,31 +189,34 @@ export default function SubProjectEditorPage({ params }: PageProps) {
   }, [editorData, autoUpdate, subProject]);
 
   // Handle editor data change
-  const handleEditorChange = (data: any) => {
+  const handleEditorChange = useCallback((data: any) => {
     setEditorData(data);
+    if (data.latexCode) {
+      setLatexCode(data.latexCode);
+    }
     setHasChanges(true);
-  };
+  }, []);
 
   // Handle LaTeX code change (manual edit)
-  const handleLatexChange = (code: string) => {
+  const handleLatexChange = useCallback((code: string) => {
     setLatexCode(code);
     setHasChanges(true);
-  };
+  }, []);
 
   // Save title
-  const handleSaveTitle = async () => {
+  const handleSaveTitle = useCallback(async () => {
     if (!editTitle.trim() || !subProject) return;
     
     try {
       await updateSubProject(projectId, subProjectId, { title: editTitle.trim() });
-      setSubProject({ ...subProject, title: editTitle.trim() });
+      setSubProject((prev) => prev ? { ...prev, title: editTitle.trim() } : null);
       setIsEditingTitle(false);
       toast.success('Title updated');
     } catch (error) {
       console.error('Failed to update title:', error);
       toast.error('Failed to update title');
     }
-  };
+  }, [editTitle, projectId, subProjectId, subProject]);
 
   // Select file from project
   const handleSelectFile = async (file: ProjectFile) => {
@@ -284,11 +310,12 @@ export default function SubProjectEditorPage({ params }: PageProps) {
     }
   };
 
-  // Copy LaTeX to clipboard
-  const copyToClipboard = () => {
+  // Copy LaTeX code to clipboard
+  const copyToClipboard = useCallback(() => {
+    if (!latexCode) return;
     navigator.clipboard.writeText(latexCode);
-    toast.success('Copied to clipboard');
-  };
+    toast.success('LaTeX code copied to clipboard');
+  }, [latexCode]);
 
   // Get icon for type
   const getTypeIcon = (type: SubProjectType) => {
@@ -435,6 +462,17 @@ export default function SubProjectEditorPage({ params }: PageProps) {
               >
                 <Copy className="w-4 h-4" /> Copy
               </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={performAutoSave}
+                disabled={!hasChanges || isSaving}
+                className="flex items-center gap-2"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Save
+              </Button>
               
               <Button
                 variant="default"
@@ -483,65 +521,174 @@ export default function SubProjectEditorPage({ params }: PageProps) {
                 )}
 
                 {(subProject.sub_project_type === 'imageToLatex' || subProject.sub_project_type === 'handwrittenFlowchart') && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-700">Source Image</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowFilePicker(true)}
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        Select
-                      </Button>
-                    </div>
-                    
-                    {selectedImage ? (
-                      <div className="space-y-3">
-                        <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
-                          <img
-                            src={selectedImage.url}
-                            alt={selectedImage.filename}
-                            className="max-h-48 w-full object-contain rounded"
-                          />
-                          <p className="text-xs text-gray-500 text-center mt-2 truncate">{selectedImage.filename}</p>
-                        </div>
-                        
-                        <Button
-                          onClick={processImage}
-                          disabled={isCompiling}
-                          className="w-full bg-[#FA5F55] hover:bg-[#FA5F55]/90"
-                          size="sm"
-                        >
-                          {isCompiling ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Processing...
-                            </>
-                          ) : (
-                            <>Convert to LaTeX</>
-                          )}
-                        </Button>
-                        
-                        {confidence > 0 && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="text-gray-500">Confidence:</span>
-                            <Badge variant={confidence >= 80 ? "default" : confidence >= 50 ? "secondary" : "destructive"}>
-                              {confidence}%
-                            </Badge>
+                  <div className="space-y-5">
+                    {/* Hero Section */}
+                    <div className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${
+                      subProject.sub_project_type === 'handwrittenFlowchart' 
+                        ? 'from-emerald-500 via-teal-500 to-cyan-500' 
+                        : 'from-orange-500 via-rose-500 to-pink-500'
+                    } p-5`}>
+                      <div className="absolute inset-0 bg-black/10"></div>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+                      <div className="relative">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            {subProject.sub_project_type === 'handwrittenFlowchart' ? <PenTool className="w-5 h-5 text-white" /> : <ImageIcon className="w-5 h-5 text-white" />}
                           </div>
-                        )}
+                          <div>
+                            <h3 className="text-white font-semibold text-sm">
+                              {subProject.sub_project_type === 'handwrittenFlowchart' ? 'Flowchart to TikZ' : 'Image to LaTeX'}
+                            </h3>
+                            <p className="text-white/70 text-xs">
+                              {subProject.sub_project_type === 'handwrittenFlowchart' ? 'AI-powered diagram extraction' : 'OCR + AI extraction'}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-white/90 text-xs leading-relaxed">
+                          {subProject.sub_project_type === 'handwrittenFlowchart' 
+                            ? 'Select a handwritten flowchart and convert it into high-quality TikZ code automatically.' 
+                            : 'Select any image containing mathematics or text to extract its LaTeX representation.'}
+                        </p>
                       </div>
-                    ) : (
-                      <div
-                        className="rounded-lg border-2 border-dashed border-gray-200 p-8 text-center cursor-pointer hover:border-[#FA5F55]/50 transition-colors"
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
                         onClick={() => setShowFilePicker(true)}
+                        className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-100/50 transition-all duration-300 group"
                       >
-                        <ImageIcon className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                        <p className="text-gray-500 text-sm mb-1">No image selected</p>
-                        <p className="text-xs text-gray-400">Click to select from project files</p>
+                        <div className="w-10 h-10 rounded-lg bg-indigo-100 group-hover:bg-indigo-200 flex items-center justify-center transition-colors">
+                          <Upload className="w-5 h-5 text-indigo-600" />
+                        </div>
+                        <span className="text-xs font-medium text-indigo-700">Link Image</span>
+                      </button>
+                      <button
+                        onClick={() => setIsExportModalOpen(true)}
+                        className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-100/50 transition-all duration-300 group"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
+                          <Download className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <span className="text-xs font-medium text-blue-700">Export</span>
+                      </button>
+                    </div>
+
+                    {/* Source Image Card */}
+                    {selectedImage && (
+                      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">Active Source</span>
+                          {confidence > 0 && (
+                            <Badge variant={confidence >= 80 ? "default" : confidence >= 50 ? "secondary" : "destructive"} className="text-[10px] h-5">
+                              {confidence}% Conf.
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="p-4 space-y-4">
+                          <div className="rounded-lg border border-gray-100 p-2 bg-gray-50/50">
+                            <img
+                              src={selectedImage.url}
+                              alt={selectedImage.filename}
+                              className="max-h-48 w-full object-contain rounded"
+                            />
+                            <p className="text-[10px] text-gray-400 text-center mt-2 truncate">{selectedImage.filename}</p>
+                          </div>
+                          
+                          <Button
+                            onClick={processImage}
+                            disabled={isCompiling}
+                            className="w-full bg-gradient-to-r from-[#FA5F55] to-[#ff8c85] hover:from-[#FA5F55]/90 hover:to-[#ff8c85]/90 text-white shadow-md"
+                            size="sm"
+                          >
+                            {isCompiling ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <PenTool className="w-4 h-4 mr-2" />
+                                Convert to LaTeX
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     )}
+
+                    {/* Linked Files Section */}
+                    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm font-medium text-gray-700">Linked Files</span>
+                          {linkedFiles.length > 0 && (
+                            <span className="px-1.5 py-0.5 text-xs font-medium bg-gray-200 text-gray-600 rounded-full">
+                              {linkedFiles.length}
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowFilePicker(true)}
+                          className="h-7 px-2 text-gray-500 hover:text-gray-700"
+                        >
+                          <Upload className="w-3 h-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                      
+                      {linkedFiles.length > 0 ? (
+                        <div className="divide-y divide-gray-100">
+                          {projectFiles.filter(f => linkedFiles.includes(f.id)).map(file => (
+                            <div key={file.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50 transition-colors group">
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${selectedImage?.fileId === file.id ? 'bg-indigo-100' : 'bg-gradient-to-br from-pink-100 to-rose-100'}`}>
+                                  <ImageIcon className={`w-4 h-4 ${selectedImage?.fileId === file.id ? 'text-indigo-600' : 'text-rose-500'}`} />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className={`text-sm font-medium truncate ${selectedImage?.fileId === file.id ? 'text-indigo-700' : 'text-gray-700'}`}>
+                                    {file.filename}
+                                  </p>
+                                  <p className="text-xs text-gray-400">
+                                    {file.file_size ? `${(file.file_size / 1024).toFixed(1)} KB` : 'Image'}
+                                    {selectedImage?.fileId === file.id && ' • Selected'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {selectedImage?.fileId !== file.id && (
+                                  <button
+                                    onClick={() => handleSelectFile(file)}
+                                    className="opacity-0 group-hover:opacity-100 text-indigo-500 hover:text-indigo-700 transition-all p-1.5 rounded-lg hover:bg-indigo-50"
+                                    title="Set as source"
+                                  >
+                                    <RotateCcw className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleUnlinkFile(file.id)}
+                                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1.5 rounded-lg hover:bg-red-50"
+                                  title="Unlink file"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-10 text-center">
+                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-50 flex items-center justify-center border border-dashed border-gray-200">
+                            <ImageIcon className="w-8 h-8 text-gray-300" />
+                          </div>
+                          <p className="text-sm font-medium text-gray-500 mb-1">No images selected</p>
+                          <p className="text-xs text-gray-400">Click Link Image above to begin</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 

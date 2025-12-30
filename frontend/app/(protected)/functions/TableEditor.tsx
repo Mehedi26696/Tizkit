@@ -89,11 +89,12 @@ const TableEditor: React.FC<TableEditorProps> = ({ onTableChange, initialData })
               backgroundColor: cell.backgroundColor,
               textColor: cell.textColor,
               bold: cell.bold,
-              italic: false, // Default value for italic
+              italic: false,
+              alignment: cell.alignment,
             }))
           ),
-          rows: rows, // Include rows
-          cols: cols, // Include cols
+          rows: rows,
+          cols: cols,
         },
       });
       if (result.data) {
@@ -102,29 +103,6 @@ const TableEditor: React.FC<TableEditorProps> = ({ onTableChange, initialData })
 
         // Pass the generated LaTeX code to the parent component
         onTableChange({ rows, cols, cells, latexCode: result.data.latex_code });
-
-        // Call preview API
-        const previewResult = await latexService.preview({
-          type: 'table',
-          data: {
-            cells: cells.map((row) =>
-              row.map((cell) => ({
-                content: cell.content,
-                backgroundColor: cell.backgroundColor,
-                textColor: cell.textColor,
-                bold: cell.bold,
-                italic: false, // Default value for italic
-              }))
-            ),
-            rows: rows, // Include rows
-            cols: cols, // Include cols
-          },
-          latex_code: result.data.latex_code,
-          output_format: 'png',
-        });
-        const blob = previewResult.data; // Ensure previewResult is used correctly
-        const url = window.URL.createObjectURL(blob);
-        setPreviewUrl(url);
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response && error.response.status === 422) {
@@ -142,24 +120,20 @@ const TableEditor: React.FC<TableEditorProps> = ({ onTableChange, initialData })
     }
   };
 
+  // Sync with parent whenever table structure changes
+  useEffect(() => {
+    onTableChange({ rows, cols, cells });
+  }, [rows, cols, cells, onTableChange]);
+
   // Auto-generate LaTeX when table changes (debounced)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       generateLatex();
-    }, 300);
+    }, 500);
 
-    return () => clearTimeout(timeoutId); // Ensure cleanup function is returned
-  }, [JSON.stringify(cells)]); // Serialize cells to avoid unnecessary renders
+    return () => clearTimeout(timeoutId);
+  }, [JSON.stringify(cells)]);
 
-  // Initial trigger when component mounts
-  useEffect(() => {
-    onTableChange({ rows, cols, cells });
-  }, []); // Empty dependency array to run only on mount
-
-  // Update parent when table structure changes
-  useEffect(() => {
-    onTableChange({ rows, cols, cells });
-  }, [rows, cols, cells, onTableChange]);
 
   const addRow = () => {
     const newRow = Array(cols).fill(null).map((_, j) => ({
@@ -191,6 +165,18 @@ const TableEditor: React.FC<TableEditorProps> = ({ onTableChange, initialData })
     setCols((prevCols) => prevCols + 1);
   };
 
+  const deleteRow = () => {
+    if (rows <= 1) return;
+    setCells((prevCells) => prevCells.slice(0, -1));
+    setRows((prevRows) => prevRows - 1);
+  };
+
+  const deleteColumn = () => {
+    if (cols <= 1) return;
+    setCells((prevCells) => prevCells.map((row) => row.slice(0, -1)));
+    setCols((prevCols) => prevCols - 1);
+  };
+
   const updateCell = (rowIndex: number, colIndex: number, updates: Partial<Cell>) => {
     const newCells = cells.map((row, i) =>
       i === rowIndex
@@ -205,15 +191,29 @@ const TableEditor: React.FC<TableEditorProps> = ({ onTableChange, initialData })
       <div className="mb-4 flex flex-wrap gap-2">
         <button
           onClick={addRow}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
         >
-          Add Row
+          + Row
+        </button>
+        <button
+          onClick={deleteRow}
+          disabled={rows <= 1}
+          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 transition-colors"
+        >
+          - Row
         </button>
         <button
           onClick={addColumn}
-          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
         >
-          Add Column
+          + Col
+        </button>
+        <button
+          onClick={deleteColumn}
+          disabled={cols <= 1}
+          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 transition-colors"
+        >
+          - Col
         </button>
         <button
           onClick={generateLatex}

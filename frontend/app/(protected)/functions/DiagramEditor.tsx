@@ -141,9 +141,10 @@ const DiagramEditor: React.FC<DiagramEditorProps> = ({ onDiagramChange, initialD
     }
   }, [initialData, isInitialized]);
 
+  // Sync with parent whenever nodes, connections, or stage size changes
   useEffect(() => {
     onDiagramChange({ nodes, connections, canvasWidth: stageSize.width, canvasHeight: stageSize.height });
-  }, []);
+  }, [nodes, connections, stageSize, onDiagramChange]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -181,19 +182,16 @@ const DiagramEditor: React.FC<DiagramEditorProps> = ({ onDiagramChange, initialD
     const newNodes = [...nodes, newNode];
     setNodes(newNodes);
     setSelectedNode(newNode.id);
-    onDiagramChange({ nodes: newNodes, connections, canvasWidth: stageSize.width, canvasHeight: stageSize.height });
   };
 
   const updateNode = (id: string, updates: Partial<Node>) => {
     const newNodes = nodes.map(node => node.id === id ? { ...node, ...updates } : node);
     setNodes(newNodes);
-    onDiagramChange({ nodes: newNodes, connections, canvasWidth: stageSize.width, canvasHeight: stageSize.height });
   };
 
   const updateConnection = (id: string, updates: Partial<Connection>) => {
     const newConnections = connections.map(conn => conn.id === id ? { ...conn, ...updates } : conn);
     setConnections(newConnections);
-    onDiagramChange({ nodes, connections: newConnections, canvasWidth: stageSize.width, canvasHeight: stageSize.height });
   };
 
   const deleteNode = (id: string) => {
@@ -202,14 +200,12 @@ const DiagramEditor: React.FC<DiagramEditorProps> = ({ onDiagramChange, initialD
     setNodes(newNodes);
     setConnections(newConnections);
     setSelectedNode(null);
-    onDiagramChange({ nodes: newNodes, connections: newConnections, canvasWidth: stageSize.width, canvasHeight: stageSize.height });
   };
 
   const deleteConnection = (id: string) => {
     const newConnections = connections.filter(conn => conn.id !== id);
     setConnections(newConnections);
     setSelectedConnection(null);
-    onDiagramChange({ nodes, connections: newConnections, canvasWidth: stageSize.width, canvasHeight: stageSize.height });
   };
 
   const handleNodeClick = (nodeId: string, e: any) => {
@@ -233,7 +229,6 @@ const DiagramEditor: React.FC<DiagramEditorProps> = ({ onDiagramChange, initialD
           };
           const newConnections = [...connections, newConnection];
           setConnections(newConnections);
-          onDiagramChange({ nodes, connections: newConnections, canvasWidth: stageSize.width, canvasHeight: stageSize.height });
         }
         setIsConnecting(false);
         setConnectionStart(null);
@@ -278,7 +273,6 @@ const DiagramEditor: React.FC<DiagramEditorProps> = ({ onDiagramChange, initialD
         return conn;
       });
       setConnections(newConnections);
-      onDiagramChange({ nodes, connections: newConnections, canvasWidth: stageSize.width, canvasHeight: stageSize.height });
     }
   };
 
@@ -287,7 +281,6 @@ const DiagramEditor: React.FC<DiagramEditorProps> = ({ onDiagramChange, initialD
     setConnections([]);
     setSelectedNode(null);
     setSelectedConnection(null);
-    onDiagramChange({ nodes: [], connections: [], canvasWidth: stageSize.width, canvasHeight: stageSize.height });
   };
 
   const renderNode = (node: Node) => {

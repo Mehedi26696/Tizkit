@@ -134,6 +134,13 @@ try:
 except Exception:
     logger.exception("Failed to import/include sub-project router")
 
+# Template routes
+try:
+    from src.auth.routes.template_routes import template_router as _template_router
+    app.include_router(_template_router, prefix="/templates", tags=["templates"])
+except Exception:
+    logger.exception("Failed to import/include template router")
+
 
  
 
