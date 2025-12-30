@@ -40,8 +40,8 @@ async def compile_diagram_latex(
     """
     # Optional: Check access if sub_project_id is provided
     if request.sub_project_id:
-        sub, project, is_valid = check_sub_project_access(session, request.sub_project_id, current_user.id)
-        if not is_valid:
+        sub, project, is_owner = check_sub_project_access(session, request.sub_project_id, current_user.id)
+        if not project:
              raise HTTPException(status_code=403, detail="Not authorized to access this project")
 
     try:

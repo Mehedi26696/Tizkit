@@ -42,8 +42,8 @@ async def compile_latex_endpoint(
     if request.sub_project_id:
         try:
             sub_project_uuid = UUID(request.sub_project_id)
-            sub, project, is_valid = check_sub_project_access(session, sub_project_uuid, current_user.id)
-            if not is_valid:
+            sub, project, is_owner = check_sub_project_access(session, sub_project_uuid, current_user.id)
+            if not project:
                  raise HTTPException(status_code=403, detail="Not authorized to access this project")
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid sub_project_id format")
