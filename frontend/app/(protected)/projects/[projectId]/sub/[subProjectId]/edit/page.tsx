@@ -903,13 +903,15 @@ export default function SubProjectEditorPage({ params }: PageProps) {
               
               {/* LaTeX Editor */}
               <div className="flex-1 overflow-hidden">
-                {latexCode ? (
+                {(latexCode || subProject.sub_project_type === 'document') ? (
                   <textarea
                     value={latexCode}
                     onChange={(e) => handleLatexChange(e.target.value)}
                     className="w-full h-full bg-gray-900 text-green-300 text-sm font-mono p-4 resize-none focus:outline-none border-none"
                     spellCheck={false}
-                    placeholder="LaTeX code will appear here..."
+                    placeholder={subProject.sub_project_type === 'document' 
+                      ? "Start typing your LaTeX code here...\n\nExample:\n\\documentclass{article}\n\\begin{document}\nHello, LaTeX!\n\\end{document}"
+                      : "LaTeX code will appear here..."}
                   />
                 ) : (
                   <div className="h-full flex items-center justify-center text-center p-6">
@@ -917,11 +919,9 @@ export default function SubProjectEditorPage({ params }: PageProps) {
                       <div className="text-4xl mb-3 opacity-50">📄</div>
                       <p className="text-gray-500 text-sm font-medium mb-1">No LaTeX Code Yet</p>
                       <p className="text-gray-600 text-xs">
-                        {subProject.sub_project_type === 'document' 
-                          ? 'Start typing or paste your LaTeX code'
-                          : subProject.sub_project_type === 'table' || subProject.sub_project_type === 'diagram'
-                            ? 'Configure your editor to generate LaTeX'
-                            : 'Process an image to generate LaTeX'}
+                        {subProject.sub_project_type === 'table' || subProject.sub_project_type === 'diagram'
+                          ? 'Configure your editor to generate LaTeX'
+                          : 'Process an image to generate LaTeX'}
                       </p>
                     </div>
                   </div>
