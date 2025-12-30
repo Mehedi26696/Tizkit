@@ -62,10 +62,7 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, subProject
 
     try {
       let response;
-      let outputFormat: 'pdf' | 'png' = 'png';
-      if (type === 'document') {
-        outputFormat = 'pdf';
-      }
+      let outputFormat: 'pdf' | 'png' = 'pdf';
 
       response = await latexService.compile({
         type,
@@ -310,45 +307,34 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, subProject
           </div>
         )}
 
-        {/* Content Display */}
         {!error && !creditError && previewUrl && (
           <div className="flex-1 overflow-auto custom-scrollbar relative">
-             {type === 'document' ? (
-              <div className="min-h-full p-8 flex flex-col items-center gap-6">
-                 <Document
-                    key={previewUrl}
-                    file={previewUrl}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    onLoadError={onDocumentLoadError}
-                    className="flex flex-col gap-6"
-                    loading={
-                      <div className="flex items-center gap-2 text-gray-500 p-4">
-                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                        <span>Loading PDF...</span>
-                      </div>
-                    }
-                 >
-                    {Array.from(new Array(numPages), (el, index) => (
-                      <Page 
-                        key={`page_${index + 1}`} 
-                        pageNumber={index + 1} 
-                        renderTextLayer={false} 
-                        renderAnnotationLayer={false}
-                        className="shadow-xl bg-white"
-                        width={600} // Default width, can make responsive if needed
-                      />
-                    ))}
-                 </Document>
-              </div>
-            ) : (
-              <div className="p-4 min-h-full flex items-center justify-center">
-                <img
-                  src={previewUrl}
-                  alt="LaTeX Preview"
-                  className="max-w-full h-auto shadow-lg rounded border"
-                />
-              </div>
-            )}
+             <div className="min-h-full p-8 flex flex-col items-center gap-6">
+                <Document
+                   key={previewUrl}
+                   file={previewUrl}
+                   onLoadSuccess={onDocumentLoadSuccess}
+                   onLoadError={onDocumentLoadError}
+                   className="flex flex-col gap-6"
+                   loading={
+                     <div className="flex items-center gap-2 text-gray-500 p-4">
+                       <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                       <span>Loading PDF...</span>
+                     </div>
+                   }
+                >
+                   {Array.from(new Array(numPages), (el, index) => (
+                     <Page 
+                       key={`page_${index + 1}`} 
+                       pageNumber={index + 1} 
+                       renderTextLayer={false} 
+                       renderAnnotationLayer={false}
+                       className="shadow-xl bg-white"
+                       width={600} // Default width, can make responsive if needed
+                     />
+                   ))}
+                </Document>
+             </div>
           </div>
         )}
 

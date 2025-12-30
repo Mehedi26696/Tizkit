@@ -26,7 +26,7 @@ class ImageToLatexCompiler:
 		# Optionally wrap code in a minimal LaTeX document
 		return latex_code
 
-	def compile_latex(self, latex_code: str, output_format: str = "png", assets: Optional[list] = None) -> Tuple[bool, Optional[bytes], Optional[str]]:
+	def compile_latex(self, latex_code: str, output_format: str = "pdf", assets: Optional[list] = None) -> Tuple[bool, Optional[bytes], Optional[str]]:
 		"""
 		Compile LaTeX code to PDF or PNG using Tectonic (preferred) or fallback methods
 		Optimized for mathematical formulas and OCR-generated LaTeX

@@ -22,7 +22,7 @@ class DiagramLatexCompiler:
         self.temp_dir = temp_dir or tempfile.gettempdir()
         self.timeout = timeout or settings.LATEX_TIMEOUT
     
-    def compile_latex(self, latex_code: str, output_format: str = "png") -> Tuple[bool, Optional[bytes], Optional[str]]:
+    def compile_latex(self, latex_code: str, output_format: str = "pdf") -> Tuple[bool, Optional[bytes], Optional[str]]:
         """
         Compile LaTeX code to PDF or PNG using Tectonic (preferred) or fallback methods
         Optimized for TikZ diagrams
