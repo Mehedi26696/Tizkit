@@ -463,16 +463,7 @@ export default function SubProjectEditorPage({ params }: PageProps) {
                 <Copy className="w-4 h-4" /> Copy
               </Button>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={performAutoSave}
-                disabled={!hasChanges || isSaving}
-                className="flex items-center gap-2"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save
-              </Button>
+
               
               <Button
                 variant="default"
