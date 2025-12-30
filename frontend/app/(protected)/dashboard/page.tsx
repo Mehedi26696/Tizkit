@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardHeader from "./components/DashboardHeader";
-import { Plus, Search, Copy, Trash2, ExternalLink, Archive, Loader2, FileText, Pencil, MoreVertical, Check, X, Crown, Users } from "lucide-react";
+import { Plus, Search, Trash2, ExternalLink, Archive, Loader2, FileText, Pencil, MoreVertical, Check, X, Crown, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -471,14 +471,6 @@ export default function DashboardPage() {
                               onClick={() => startEditing(project)}
                             >
                               <Pencil className="w-4 h-4 text-[#1f1e24]/70" />
-                            </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              className="p-2 hover:bg-[#FA5F55]/10 rounded-lg transition-colors"
-                              title="Duplicate"
-                            >
-                              <Copy className="w-4 h-4 text-[#1f1e24]/70" />
                             </motion.button>
                             {project.role !== 'collaborator' && (
                               <motion.button

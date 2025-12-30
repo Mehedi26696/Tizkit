@@ -87,6 +87,8 @@ async def get_user_projects(
     
     query = query.order_by(Project.updated_at.desc())
     projects = session.exec(query).all()
+    # Deduplicate by ID to prevent any potential overlap (e.g. self-invites)
+    projects = list({p.id: p for p in projects}.values())
     
     # Create response with role
     result = []
