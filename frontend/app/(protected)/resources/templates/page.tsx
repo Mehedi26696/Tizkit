@@ -158,6 +158,43 @@ Your solution...
 
 \\end{document}`,
   },
+  {
+    id: "generic-image",
+    name: "Image Add",
+    description: "Code snippet to insert and center an image with a caption.",
+    category: "Generics",
+    preamble: `\\usepackage{graphicx}
+
+% --- Copy this where you want the image ---
+\\begin{figure}[htbp]
+  \\centering
+  \\includegraphics[width=0.8\\textwidth]{example-image}
+  \\caption{Your caption here}
+  \\label{fig:image1}
+\\end{figure}`,
+  },
+  {
+    id: "generic-table",
+    name: "Table Add",
+    description: "Standard table template with borders and a caption.",
+    category: "Generics",
+    preamble: `\\usepackage{booktabs}
+
+% --- Copy this where you want the table ---
+\\begin{table}[htbp]
+  \\centering
+  \\caption{Your Table Title}
+  \\label{tab:table1}
+  \\begin{tabular}{ccc}
+    \\toprule
+    Header 1 & Header 2 & Header 3 \\\\
+    \\midrule
+    Value 1 & Value 2 & Value 3 \\\\
+    Value 4 & Value 5 & Value 6 \\\\
+    \\bottomrule
+  \\end{tabular}
+\\end{table}`,
+  },
 ];
 
 export default function SystemTemplatesPage() {
@@ -217,6 +254,18 @@ export default function SystemTemplatesPage() {
                     </div>
                   </div>
                   <p className="text-sm text-gray-600 mb-4">{template.description}</p>
+                  
+                  <div className="mb-4 bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-1.5 bg-gray-100/50 border-b border-gray-100">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">LaTeX Preview</span>
+                    </div>
+                    <div className="p-3 max-h-40 overflow-y-auto custom-scrollbar bg-[#1e1e24]">
+                      <pre className="text-[11px] font-mono text-gray-300 whitespace-pre-wrap leading-relaxed">
+                        {template.preamble}
+                      </pre>
+                    </div>
+                  </div>
+
                   <button
                     onClick={() => copyToClipboard(template.preamble, template.id)}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"

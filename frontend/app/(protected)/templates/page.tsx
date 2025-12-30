@@ -170,18 +170,47 @@ export default function TemplatesPage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-2 mb-4">
+                    <div className="flex gap-2 mb-3">
                       {template.preamble && (
-                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                          <Package className="w-3 h-3 mr-1" />
+                        <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-600 border-blue-100 uppercase tracking-wider font-bold">
                           Preamble
                         </Badge>
                       )}
                       {template.code && (
-                        <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
-                          <Code className="w-3 h-3 mr-1" />
-                          Code
+                        <Badge variant="secondary" className="text-[10px] bg-green-50 text-green-600 border-green-100 uppercase tracking-wider font-bold">
+                          Body Code
                         </Badge>
+                      )}
+                    </div>
+
+                    {/* Code Previews */}
+                    <div className="space-y-3 mb-4">
+                      {template.preamble && (
+                        <div className="bg-[#1e1e24] rounded-lg border border-gray-100 overflow-hidden">
+                          <div className="px-2 py-1 bg-gray-50 border-b border-gray-100 flex items-center gap-1.5">
+                            <Package className="w-3 h-3 text-blue-500" />
+                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">Preamble Preview</span>
+                          </div>
+                          <div className="p-2 max-h-32 overflow-y-auto custom-scrollbar">
+                            <pre className="text-[10px] font-mono text-gray-300 whitespace-pre-wrap">
+                              {template.preamble}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {template.code && (
+                        <div className="bg-[#1e1e24] rounded-lg border border-gray-100 overflow-hidden">
+                          <div className="px-2 py-1 bg-gray-50 border-b border-gray-100 flex items-center gap-1.5">
+                            <Code className="w-3 h-3 text-green-500" />
+                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">Body Code Preview</span>
+                          </div>
+                          <div className="p-2 max-h-48 overflow-y-auto custom-scrollbar">
+                            <pre className="text-[10px] font-mono text-gray-300 whitespace-pre-wrap">
+                              {template.code}
+                            </pre>
+                          </div>
+                        </div>
                       )}
                     </div>
 
