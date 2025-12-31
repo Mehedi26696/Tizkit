@@ -1,149 +1,263 @@
 "use client";
 
+import * as AccordionPrimitive from '@radix-ui/react-accordion';
 import { motion } from "framer-motion";
-import { HelpCircle, MessageCircle, Mail, Github, ArrowLeft } from "lucide-react";
+import { HelpCircle, MessageCircle, Mail, Github, PlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Sidebar from '../../dashboard/components/Sidebar';
+import DashboardHeader from '../../dashboard/components/DashboardHeader';
+import { useAuth } from '@/lib/context/AuthContext';
+import { cn } from '@/lib/utils';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+} from '@/components/ui/accordion';
 
 const faqs = [
   {
+    id: '1',
     question: "How do I create a new project?",
     answer:
       "Navigate to the Dashboard and click the 'New Project' button. Enter a name and description, then start adding sub-projects like Tables, Diagrams, or Documents.",
   },
   {
+    id: '2',
     question: "What is the difference between 'Templates' and 'System Templates'?",
     answer:
       "'Templates' in the main navigation are your personal, custom-saved LaTeX preambles. 'System Templates' under Resources are pre-made templates provided by TizKit that you can copy and use.",
   },
   {
+    id: '3',
     question: "How does Image-to-LaTeX work?",
     answer:
       "Upload an image containing text or mathematical formulas. Our AI (powered by Google Gemini Vision) will analyze the image and extract the content as LaTeX code.",
   },
   {
+    id: '4',
     question: "Can I export my work as a PDF?",
     answer:
       "Yes! In any sub-project editor, click the 'Export' button. You can choose between PDF and PNG formats. The LaTeX code is compiled using the Tectonic engine.",
   },
   {
+    id: '5',
     question: "How do I save my work?",
     answer:
       "TizKit auto-saves your work every few seconds. You can also manually save by pressing Ctrl+S (Cmd+S on Mac).",
   },
   {
+    id: '6',
     question: "What LaTeX packages are supported?",
     answer:
       "TizKit uses the Tectonic LaTeX distribution, which supports all standard packages including amsmath, tikz, graphicx, booktabs, xcolor, and many more.",
   },
 ];
 
+const fadeInAnimationVariants = {
+  initial: {
+    opacity: 0,
+    y: 30,
+    scale: 0.95,
+  },
+  animate: (index: number) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+  }),
+};
+
 export default function HelpCenterPage() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  const displayName = user?.full_name || user?.username || 'User';
 
   return (
-    <div className="p-8 max-w-4xl">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+    <div className="min-h-screen bg-[#f9f4eb]/50 font-[Helvetica]">
+      <Sidebar />
+      <DashboardHeader />
+      
+      <main className="ml-64 p-8 pt-24">
+        
+
+        {/* Help Center Header */}
+        <motion.div 
+          className="mb-8 sm:mb-10 text-center"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm font-medium">Back</span>
-        </button>
-        <h1 className="text-3xl font-bold text-gray-900">Help Center</h1>
-        <p className="text-gray-600 mt-2">
-          Find answers to common questions or get in touch with our support team.
-        </p>
-      </motion.div>
+          <h2 className="mb-1 text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight">
+            Questions?{' '}
+            <span className="text-[#FA5F55]">
+              We've got
+            </span>
+          </h2>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight">
+            <span className='text-[#FA5F55]'>Answers</span>
+          </h2>
+        </motion.div>
 
-      {/* FAQs */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="mb-10"
-      >
-        <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
-          Frequently Asked Questions
-        </h2>
-        <div className="space-y-4">
-          {faqs.map((faq, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-white border border-gray-200 rounded-lg p-5"
+        {/* FAQ Accordion */}
+        <motion.div
+          className="relative mx-auto max-w-4xl mb-12"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          {/* Decorative gradients */}
+          <motion.div 
+            className="bg-[#FA5F55]/10 absolute -top-4 -left-4 -z-10 h-48 w-48 sm:h-60 sm:w-60 rounded-full blur-3xl"
+            animate={{ 
+              scale: [1, 1.2, 1],
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.div 
+            className="bg-[#FA5F55]/10 absolute -right-4 -bottom-4 -z-10 h-48 w-48 sm:h-60 sm:w-60 rounded-full blur-3xl"
+            animate={{ 
+              scale: [1.2, 1, 1.2],
+              opacity: [0.5, 0.3, 0.5],
+            }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 4
+            }}
+          />
+
+          <Accordion
+            type="single"
+            collapsible
+            className="w-full rounded-xl border p-4 sm:p-6 backdrop-blur-sm border-[#FA5F55]"
+            defaultValue="1"
+          >
+            {faqs.map((faq, index) => (
+              <motion.div
+                key={faq.id}
+                custom={index}
+                variants={fadeInAnimationVariants}
+                initial="initial"
+                animate="animate"
+                transition={{ delay: index * 0.05 }}
+              >
+                <AccordionItem
+                  value={faq.id}
+                  className={cn(
+                    'border-[#FA5F55]/60 my-2 overflow-hidden rounded-lg border py-2 sm:py-3 px-2 sm:px-3 shadow-md transition-all border-b-2 border-b-[#FA5F55]/40 bg-[#f9f4eb]',
+                    'data-[state=open]:bg-[#f9f4eb]/60 data-[state=open]:shadow-lg data-[state=open]:scale-[1.02]',
+                    'hover:shadow-lg hover:scale-[1.01]',
+                  )}
+                >
+                  <AccordionPrimitive.Header className="flex">
+                    <AccordionPrimitive.Trigger
+                      className={cn(
+                        'ml-1 sm:ml-2 group flex flex-1 items-center justify-between gap-2 sm:gap-4 py-3 sm:py-4 text-left text-sm sm:text-base md:text-lg font-medium',
+                        'hover:text-primary transition-all duration-300 outline-none',
+                        'focus-visible:ring-primary/50 focus-visible:ring-2',
+                        'data-[state=open]:text-primary',
+                      )}
+                    >
+                      <span className="hover:border-b-2 hover:border-b-[#FA5F55]/40 cursor-pointer transition-all duration-300">{faq.question}</span>
+                      <PlusIcon
+                        size={18}
+                        className={cn(
+                          'text-[#1f1e24] shrink-0 transition-all duration-500 ease-out',
+                          'group-data-[state=open]:rotate-45 group-data-[state=open]:text-[#FA5F55]',
+                        )}
+                        aria-hidden="true"
+                      />
+                    </AccordionPrimitive.Trigger>
+                  </AccordionPrimitive.Header>
+                  <AccordionContent
+                    className={cn(
+                      'ml-1 sm:ml-2 text-[#1f1e24] overflow-hidden pt-0 pb-3 sm:pb-4 text-sm sm:text-base',
+                      'data-[state=open]:animate-accordion-down',
+                      'data-[state=closed]:animate-accordion-up',
+                    )}
+                  >
+                    <motion.div 
+                      className="border-[#1f1e24]/30 border-t pt-3"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                    >
+                      {faq.answer}
+                    </motion.div>
+                  </AccordionContent>
+                </AccordionItem>
+              </motion.div>
+            ))}
+          </Accordion>
+        </motion.div>
+
+        {/* Contact Support Section */}
+        <motion.div
+          className="max-w-4xl mx-auto"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+         
+          <h3 className="text-2xl font-semibold text-[#1f1e24] mb-6 text-center">
+            Contact Support
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <motion.a
+              href="mailto:support@tizkit.com"
+              className="flex items-center gap-4 p-4 bg-white border-2 border-[#1f1e24]/20 rounded-lg hover:border-[#FA5F55]/50 transition-all"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <div className="flex items-start gap-3">
-                <HelpCircle className="w-5 h-5 text-[#FA5F55] mt-0.5 flex-shrink-0" />
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2">{faq.question}</h3>
-                  <p className="text-sm text-gray-600">{faq.answer}</p>
-                </div>
+              <div className="p-2 bg-[#FA5F55]/10 rounded-lg">
+                <Mail className="w-5 h-5 text-[#FA5F55]" />
               </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
+              <div>
+                <h4 className="font-semibold text-[#1f1e24]">Email Us</h4>
+                <p className="text-xs text-[#1f1e24]/60">support@tizkit.com</p>
+              </div>
+            </motion.a>
 
-      {/* Contact Options */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="mb-10"
-      >
-        <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
-          Contact Support
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <a
-            href="mailto:support@tizkit.com"
-            className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:border-[#FA5F55]/50 transition-all"
-          >
-            <div className="p-2 bg-[#FA5F55]/10 rounded-lg">
-              <Mail className="w-5 h-5 text-[#FA5F55]" />
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-900">Email Us</h3>
-              <p className="text-xs text-gray-500">support@tizkit.com</p>
-            </div>
-          </a>
+            <motion.a
+              href="https://github.com/Mehedi26696/Latex-Helper---Tizkit/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-4 p-4 bg-white border-2 border-[#1f1e24]/20 rounded-lg hover:border-[#1f1e24]/40 transition-all"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <div className="p-2 bg-[#1f1e24]/10 rounded-lg">
+                <Github className="w-5 h-5 text-[#1f1e24]" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-[#1f1e24]">GitHub Issues</h4>
+                <p className="text-xs text-[#1f1e24]/60">Report bugs & features</p>
+              </div>
+            </motion.a>
 
-          <a
-            href="https://github.com/Mehedi26696/Latex-Helper---Tizkit/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-all"
-          >
-            <div className="p-2 bg-gray-100 rounded-lg">
-              <Github className="w-5 h-5 text-gray-700" />
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-900">GitHub Issues</h3>
-              <p className="text-xs text-gray-500">Report bugs & features</p>
-            </div>
-          </a>
-
-          <a
-            href="#"
-            className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-500/50 transition-all"
-          >
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <MessageCircle className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-900">Community</h3>
-              <p className="text-xs text-gray-500">Join our Discord</p>
-            </div>
-          </a>
-        </div>
-      </motion.div>
+            <motion.a
+              href="#"
+              className="flex items-center gap-4 p-4 bg-white border-2 border-[#1f1e24]/20 rounded-lg hover:border-blue-500/50 transition-all"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <MessageCircle className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-[#1f1e24]">Community</h4>
+                <p className="text-xs text-[#1f1e24]/60">Join our Discord</p>
+              </div>
+            </motion.a>
+          </div>
+        </motion.div>
+      </main>
     </div>
   );
 }

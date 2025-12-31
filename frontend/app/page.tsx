@@ -10,6 +10,7 @@ import LastTry from "@/components/marketing/LastTry";
 import { ScrollText } from "lucide-react";
 import ScrollBasedVelocity from "@/components/marketing/ScrollText";
 import InteractiveGridBackground from "@/components/ui/interactive-grid-background";
+import ContactUs from "@/components/marketing/ContactUs";
 
 export default function Home() {
   return (
@@ -21,6 +22,7 @@ export default function Home() {
       <Testimonials/>
       <CongestedPricing/>
       <Faq1/>
+      <ContactUs/>
       <LastTry/>
       <FooterStandard/>
     </div>

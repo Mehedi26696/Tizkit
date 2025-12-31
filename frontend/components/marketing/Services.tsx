@@ -42,7 +42,7 @@ const headerVariants = {
 
 export default function Feature1() {
   return (
-    <section className="relative py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden">
+    <section id="services" className="relative py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
         {/* Decorative gradient blobs */}
         <motion.div 

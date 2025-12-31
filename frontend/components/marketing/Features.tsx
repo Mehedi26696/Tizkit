@@ -34,7 +34,7 @@ const fadeInAnimationVariants = {
 
 function Features() {
   return (
-    <section className="w-full py-5 sm:py-8 md:py-12 lg:py-14 mx-auto flex flex-col items-center justify-center bg-[#f5f3ef]">
+    <section id='features' className="w-full py-5 sm:py-8 md:py-12 lg:py-14 mx-auto flex flex-col items-center justify-center bg-[#f5f3ef]">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         whileInView={{ opacity: 1, y: 0 }}

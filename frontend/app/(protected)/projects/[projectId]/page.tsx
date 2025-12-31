@@ -264,7 +264,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Files Section */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border-2 border-[#1f1e24]/10 p-6">
+            <div className="bg-white rounded-xl border-1 border-[#FA5F55]/30 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-[#1f1e24]">Project Files</h2>
                 <span className="text-sm text-[#1f1e24]/50">{files.length} files</span>
@@ -286,7 +286,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
                   {files.map((file) => (
                     <div
                       key={file.id}
-                      className="group flex items-center gap-3 p-3 rounded-lg hover:bg-[#f9f4eb]/50 transition-colors"
+                      className="group flex items-center gap-3 p-3 rounded-lg hover:bg-[#f9f4eb]/50 transition-colors border-b-1"
                     >
                       {file.file_type === 'image' ? (
                         <ImageIcon className="w-5 h-5 text-[#FA5F55]/70 flex-shrink-0" />
@@ -326,7 +326,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
 
           {/* Sub-Projects Section */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm border-2 border-[#1f1e24]/10 p-6">
+            <div className="bg-white rounded-xl  border-1 border-[#FA5F55]/40 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-[#1f1e24]">Sub-Projects</h2>
                 <span className="text-sm text-[#1f1e24]/50">{subProjects.length} items</span>

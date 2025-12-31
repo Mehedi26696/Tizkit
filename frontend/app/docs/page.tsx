@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, ExternalLink, ChevronRight, Info, Lightbulb, AlertTriangle, Code, Layout, Image as ImageIcon, Table as TableIcon, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from '../../dashboard/components/Sidebar';
-import DashboardHeader from '../../dashboard/components/DashboardHeader';
+
 import { useAuth } from '@/lib/context/AuthContext';
 import { cn } from '@/lib/utils';
+import Navbar from '@/components/common/Navbar';
+import Footer from '@/components/common/Footer';
 
 // Detailed documentation content structure
 const fullDocs = {
@@ -215,12 +216,11 @@ export default function DocumentationPage() {
 
   return (
     <div className="min-h-screen bg-[#f9f4eb]/50 font-[Helvetica]">
-      <Sidebar />
-      <DashboardHeader />
-      
-      <div className="ml-64 pt-24 flex">
+      <Navbar />
+
+      <div className="pt-24 flex">
         {/* Left Sidebar: Navigation Grid */}
-        <div className="w-[480px] p-8 border-r border-gray-200 overflow-y-auto bg-white/10 h-[calc(100vh-6rem)] sticky top-24">
+        <div className="w-[480px] p-8 border-r border-[#1f1e24]/10 overflow-y-auto bg-white/50 h-[calc(100vh-6rem)] sticky top-24">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -246,7 +246,7 @@ export default function DocumentationPage() {
                       "w-full text-left p-5 rounded-2xl border transition-all flex items-center justify-between group",
                       activeId === item.id
                         ? "bg-white border-[#FA5F55]/30 shadow-sm"
-                        : "bg-white/60 border-gray-200 hover:border-[#FA5F55]/20 hover:shadow-sm hover:bg-white"
+                        : "bg-white/80 border-[#1f1e24]/10 hover:border-[#FA5F55]/20 hover:shadow-sm hover:bg-white"
                     )}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
@@ -270,7 +270,7 @@ export default function DocumentationPage() {
             </div>
           ))}
 
-          <div className="pt-8 border-t border-gray-200 mt-8">
+          <div className="pt-8 border-t border-[#1f1e24]/10 mt-8">
             <h2 className="text-xs font-semibold text-[#1f1e24]/50 uppercase tracking-wider mb-5">External Resources</h2>
             <div className="space-y-2">
               {externalResources.map(res => (
@@ -279,7 +279,7 @@ export default function DocumentationPage() {
                   href={res.url} 
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-4 bg-white/60 rounded-xl hover:bg-white transition-all flex items-center justify-between group border border-gray-200 hover:border-[#FA5F55]/20 hover:shadow-sm block"
+                  className="p-4 bg-white/80 rounded-xl hover:bg-white transition-all flex items-center justify-between group border border-[#1f1e24]/10 hover:border-[#FA5F55]/20 hover:shadow-sm block"
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
                 >
@@ -343,6 +343,7 @@ export default function DocumentationPage() {
           </AnimatePresence>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

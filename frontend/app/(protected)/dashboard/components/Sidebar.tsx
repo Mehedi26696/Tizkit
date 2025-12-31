@@ -54,13 +54,15 @@ export default function Sidebar() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <Image
-          src="/images/Log.png"
-          alt="Logo"
-          width={150}
-          height={40}
-          style={{ height: 'auto' }}
-        />
+        <Link href="/">
+          <Image
+            src="/images/Log.png"
+            alt="Logo"
+            width={150}
+            height={40}
+            style={{ height: 'auto' }}
+          />
+        </Link>
       </motion.div>
 
       {/* Navigation - Flex grow to push logout to bottom */}
