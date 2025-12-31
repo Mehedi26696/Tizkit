@@ -72,7 +72,7 @@ const fadeInUpVariants = {
 
 export default function CongestedPricing() {
   return (
-    <div className="w-full py-12 sm:py-16 md:py-20 lg:py-24 mx-auto flex items-center justify-center bg-[#f5f3ef]">
+    <div id='pricing' className="w-full py-12 sm:py-16 md:py-20 lg:py-24 mx-auto flex items-center justify-center bg-[#f5f3ef]">
       <div className="container font-[Helvetica] px-4 sm:px-6 md:px-8">
         <motion.div 
           className="mb-8 sm:mb-12 md:mb-16 space-y-3 sm:space-y-4 text-center"
