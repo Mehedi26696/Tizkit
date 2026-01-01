@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Depends
 from sqlmodel import Session
 import logging
-from ..services import ocr_service, image_to_latex_service
+from ..services import ocr_service, image_to_latex_service, gemini_service
 from ..services.latex_reconstruct import wrap_latex
 from ..schemas.imageTolatex_schemas import OCRResponse
 from ...auth.middleware.credits_middleware import create_credit_checker
@@ -14,6 +14,49 @@ logger = logging.getLogger(__name__)
 
 ocr_router = APIRouter()
 
+
+async def extract_text_with_vision_fallback(image_content: bytes, filename: str, content_type: str) -> dict:
+    """
+    Extract text from image using OCR.space API with Gemini Vision fallback.
+    Returns dict with 'success', 'text', 'error', and 'used_fallback' keys.
+    """
+    # Try OCR.space first
+    ocr_result = await ocr_service.extract_text(image_content, filename, content_type)
+    
+    if ocr_result["success"] and ocr_result.get("text"):
+        return {
+            "success": True,
+            "text": ocr_result["text"],
+            "error": None,
+            "used_fallback": False
+        }
+    
+    # OCR failed, try Gemini Vision API as fallback
+    logger.warning(f"OCR failed for {filename}, falling back to Gemini Vision API")
+    
+    vision_result = await gemini_service.extract_image_content(image_content, filename)
+    
+    if vision_result["success"] and vision_result.get("data", {}).get("content"):
+        extracted_text = vision_result["data"]["content"]
+        logger.info(f"Vision API fallback succeeded, extracted {len(extracted_text)} characters")
+        return {
+            "success": True,
+            "text": extracted_text,
+            "error": None,
+            "used_fallback": True
+        }
+    
+    # Both failed
+    ocr_error = ocr_result.get("error", "OCR failed")
+    vision_error = vision_result.get("error", "Vision API failed")
+    return {
+        "success": False,
+        "text": None,
+        "error": f"OCR failed: {ocr_error}. Vision fallback also failed: {vision_error}",
+        "used_fallback": True
+    }
+
+
 @ocr_router.post("/ocr-text", response_model=OCRResponse)
 async def ocr_text(
     image: UploadFile = File(...),
@@ -22,7 +65,7 @@ async def ocr_text(
     credit_check: dict = Depends(create_credit_checker(ServiceType.OCR_TEXT_EXTRACTION))
 ):
     """
-    Extract text from image using OCR.space API
+    Extract text from image using OCR.space API with Gemini Vision fallback
     """
     try:
         # Extract credit service and user info from dependency
@@ -31,19 +74,20 @@ async def ocr_text(
         
         image_content = await image.read()
         
-        # Extract text using OCR
-        ocr_result = await ocr_service.extract_text(
+        # Extract text using OCR with Vision API fallback
+        extraction_result = await extract_text_with_vision_fallback(
             image_content, image.filename, image.content_type
         )
         
-        if not ocr_result["success"]:
+        if not extraction_result["success"]:
             return OCRResponse(
                 success=False,
-                error=ocr_result["error"],
+                error=extraction_result["error"],
                 data=None
             )
         
-        original_text = ocr_result["text"]
+        original_text = extraction_result["text"]
+        used_fallback = extraction_result["used_fallback"]
         
         # Try to improve the text using Gemini
         improvement_result = await image_to_latex_service.improve_text(original_text)
@@ -74,7 +118,8 @@ async def ocr_text(
                         "original_text": original_text,
                         "original_latex": latex_code,
                         "improved": True,
-                        "refined": True
+                        "refined": True,
+                        "used_vision_fallback": used_fallback
                     }
                 )
             else:
@@ -95,7 +140,8 @@ async def ocr_text(
                         "original_text": original_text,
                         "improved": True,
                         "refined": False,
-                        "refinement_error": refinement_result["error"]
+                        "refinement_error": refinement_result["error"],
+                        "used_vision_fallback": used_fallback
                     }
                 )
         else:
@@ -124,7 +170,8 @@ async def ocr_text(
                         "original_latex": latex_code,
                         "improved": False,
                         "refined": True,
-                        "improvement_error": improvement_result["error"]
+                        "improvement_error": improvement_result["error"],
+                        "used_vision_fallback": used_fallback
                     }
                 )
             else:
@@ -146,7 +193,8 @@ async def ocr_text(
                         "improved": False,
                         "refined": False,
                         "improvement_error": improvement_result["error"],
-                        "refinement_error": refinement_result["error"]
+                        "refinement_error": refinement_result["error"],
+                        "used_vision_fallback": used_fallback
                     }
                 )
         

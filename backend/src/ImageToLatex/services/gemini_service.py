@@ -235,38 +235,77 @@ LATEX CODE TO FIX:
                     "data": None
                 }
 
+            logger.info("GeminiService: Using Vision API to extract image content")
+
             headers = {"Content-Type": "application/json"}
-            prompt = (
-                "You are an AI assistant. Extract all readable content from the image, including text, mathematical formulas, and objects. "
-                "If you detect math, return the LaTeX code. If you detect text, return the text. "
-                "Summarize the image content in a concise way."
-            )
-            # Gemini vision API expects base64-encoded image
+            prompt = """Extract all readable content from this image, including text, mathematical formulas, and any structured data.
+
+**RULES:**
+1. If you detect mathematical formulas or equations, return them as LaTeX code
+2. If you detect plain text, return the text exactly as shown
+3. If you detect tables, return them in a structured format
+4. Preserve the original formatting and structure as much as possible
+
+**OUTPUT:**
+Return the extracted content. If there are mathematical formulas, wrap them in LaTeX delimiters like $...$ for inline or $$...$$ for display math."""
+
+            # Convert image to base64
             import base64
             image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+            
+            # Detect mime type from image bytes
+            mime_type = "image/png"
+            if image_bytes[:3] == b'\xff\xd8\xff':
+                mime_type = "image/jpeg"
+            elif image_bytes[:4] == b'\x89PNG':
+                mime_type = "image/png"
+            elif image_bytes[:6] in (b'GIF87a', b'GIF89a'):
+                mime_type = "image/gif"
+            elif image_bytes[:4] == b'RIFF' and len(image_bytes) > 12 and image_bytes[8:12] == b'WEBP':
+                mime_type = "image/webp"
+            
+            logger.info(f"GeminiService: Image size: {len(image_bytes)} bytes, mime_type: {mime_type}")
+            
             payload = {
                 "contents": [
                     {
                         "parts": [
-                            {"text": prompt},
-                            {"inline_data": {"mime_type": "image/png", "data": image_b64}}
+                            {"inline_data": {"mime_type": mime_type, "data": image_b64}},
+                            {"text": prompt}
                         ]
                     }
-                ]
+                ],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "topP": 0.95,
+                    "topK": 40,
+                    "maxOutputTokens": 4096
+                }
             }
             params = {"key": self.api_key}
 
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(self.base_url, headers=headers, params=params, json=payload)
+                
+                logger.info(f"GeminiService: Vision API response status: {response.status_code}")
+                
                 if response.status_code != 200:
+                    error_detail = ""
+                    try:
+                        error_detail = response.text[:500]
+                    except:
+                        pass
+                    logger.error(f"Gemini Vision API error response: {error_detail}")
                     return {
                         "success": False,
                         "error": f"Gemini API returned status {response.status_code}",
                         "data": None
                     }
+                    
                 try:
                     result = response.json()
                     content = result["candidates"][0]["content"]["parts"][0]["text"]
+                    logger.info(f"GeminiService: Vision API extracted {len(content)} characters")
                     return {
                         "success": True,
                         "error": None,
@@ -280,7 +319,7 @@ LATEX CODE TO FIX:
                         "data": None
                     }
         except Exception as e:
-            logger.error(f"Gemini vision API error: {str(e)}")
+            logger.error(f"Gemini vision API error: {str(e)}", exc_info=True)
             return {
                 "success": False,
                 "error": f"Gemini vision API error: {str(e)}",

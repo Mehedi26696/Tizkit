@@ -15,8 +15,8 @@ class OCRService:
     def __init__(self):
         self.api_key = settings.OCR_SPACE_API_KEY or ""
         self.base_url = settings.OCR_SPACE_BASE_URL
-        self.timeout = 60.0  # Increased timeout for large images
-        self.max_retries = 2  # Number of retry attempts
+        self.timeout = 20.0  # Increased timeout for large images
+        self.max_retries = 0  # Number of retry attempts (total 3 attempts)
     
     async def extract_text(self, image_content: bytes, filename: str, content_type: str) -> Dict[str, Any]:
         """Extract text from image using OCR.space API with retry logic"""

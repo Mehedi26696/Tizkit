@@ -285,16 +285,41 @@ export default function SubProjectEditorPage({ params }: PageProps) {
         ? await latexService.processHandwrittenFlowchart(file)
         : await latexService.processImage(file);
       
+      console.log('Process image result:', JSON.stringify(result, null, 2));
+      
       if (result.success && result.data) {
-        const latexResult = result.data.data?.latex_code || result.data.latex_code || '';
-        setLatexCode(latexResult);
-        setConfidence(result.data.data?.confidence || (isHandwrittenFlowchart ? 0 : 85));
-        setHasChanges(true);
+        // Handle different response structures:
+        // For processImage: result.data = { success: true, data: { latex_code: "..." } }
+        // For processHandwrittenFlowchart: result.data = { latex_code: "..." }
+        let latexResult = '';
+        if (result.data.data?.latex_code !== undefined) {
+          latexResult = result.data.data.latex_code;
+        } else if (result.data.latex_code !== undefined) {
+          latexResult = result.data.latex_code;
+        }
         
-        if (isHandwrittenFlowchart && result.data.used_fallback) {
-          toast.warning('Template generated - flowchart couldn\'t be fully analyzed. Please modify as needed.');
+        console.log('Extracted LaTeX result:', latexResult);
+        
+        if (latexResult) {
+          setLatexCode(latexResult);
+          setConfidence(result.data.data?.confidence || (isHandwrittenFlowchart ? 0 : 85));
+          setHasChanges(true);
+          
+          // Check if vision fallback was used
+          const usedVisionFallback = result.data.data?.used_vision_fallback || false;
+          
+          if (isHandwrittenFlowchart && result.data.used_fallback) {
+            toast.warning('Template generated - flowchart couldn\'t be fully analyzed. Please modify as needed.');
+          } else if (usedVisionFallback) {
+            toast.success('Image converted to LaTeX (using Vision API fallback)');
+          } else {
+            toast.success(isHandwrittenFlowchart ? 'Handwritten flowchart converted to LaTeX' : 'Image converted to LaTeX');
+          }
         } else {
-          toast.success(isHandwrittenFlowchart ? 'Handwritten flowchart converted to LaTeX' : 'Image converted to LaTeX');
+          // LaTeX code is empty - check if there was an error in the response
+          const errorMsg = result.data.data?.error || result.data.error || 'No LaTeX code was generated from the image';
+          console.error('Empty LaTeX result. Full response:', result);
+          toast.error(errorMsg);
         }
       } else if (result.creditError) {
         // Handle credit error with dedicated UI
@@ -903,7 +928,7 @@ export default function SubProjectEditorPage({ params }: PageProps) {
               
               {/* LaTeX Editor */}
               <div className="flex-1 overflow-hidden">
-                {(latexCode || subProject.sub_project_type === 'document') ? (
+                {(latexCode || subProject.sub_project_type === 'document' || subProject.sub_project_type === 'imageToLatex' || subProject.sub_project_type === 'handwrittenFlowchart') ? (
                   <textarea
                     value={latexCode}
                     onChange={(e) => handleLatexChange(e.target.value)}
@@ -911,7 +936,9 @@ export default function SubProjectEditorPage({ params }: PageProps) {
                     spellCheck={false}
                     placeholder={subProject.sub_project_type === 'document' 
                       ? "Start typing your LaTeX code here...\n\nExample:\n\\documentclass{article}\n\\begin{document}\nHello, LaTeX!\n\\end{document}"
-                      : "LaTeX code will appear here..."}
+                      : subProject.sub_project_type === 'imageToLatex' || subProject.sub_project_type === 'handwrittenFlowchart'
+                        ? "Process an image to generate LaTeX, or type your LaTeX code here..."
+                        : "LaTeX code will appear here..."}
                   />
                 ) : (
                   <div className="h-full flex items-center justify-center text-center p-6">
