@@ -297,7 +297,7 @@ export default function SystemTemplatesPage() {
                         ) : (
                           <>
                             <Copy className="w-4 h-4" />
-                            Copy Preamble
+                            Copy Code
                           </>
                         )}
                       </motion.button>
