@@ -7,9 +7,10 @@ import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
-import { getProjects, createProject, deleteProject, updateProject } from "@/lib/api/projects";
+import { getProjects, deleteProject, updateProject } from "@/lib/api/projects";
 import type { ProjectListItem, ProjectStatus } from "@/types/project";
 import { toast } from "sonner";
+import CreateProjectModal from "@/components/projects/CreateProjectModal";
 
 
 const itemVariants = {
@@ -53,7 +54,7 @@ export default function DashboardPage() {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -91,22 +92,8 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCreateProject = async () => {
-    setIsCreating(true);
-    try {
-      const newProject = await createProject({
-        title: 'Untitled Project',
-        status: 'draft',
-        latex_content: '\\documentclass{article}\n\\begin{document}\n\nHello, World!\n\n\\end{document}'
-      });
-      toast.success('Project created!');
-      router.push(`/projects/${newProject.id}`);
-    } catch (error) {
-      console.error('Failed to create project:', error);
-      toast.error('Failed to create project');
-    } finally {
-      setIsCreating(false);
-    }
+  const handleCreateProject = () => {
+    setIsModalOpen(true);
   };
 
 
@@ -227,13 +214,8 @@ export default function DashboardPage() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleCreateProject}
-                disabled={isCreating}
               >
-                {isCreating ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Plus className="w-4 h-4" />
-                )}
+                <Plus className="w-4 h-4" />
                 New Project
               </motion.button>
             </div>
@@ -272,7 +254,6 @@ export default function DashboardPage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleCreateProject}
-                  disabled={isCreating}
                 >
                   <Plus className="w-4 h-4" />
                   Create Project
@@ -557,6 +538,7 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
       </main>
+      <CreateProjectModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }
