@@ -5,173 +5,142 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
   Home, 
-  FileCode2, 
-  DollarSign, 
   Settings, 
   LogOut, 
-  Library, 
-  ChevronDown, 
-  ChevronUp,
   FileText,
+  Zap,
+  Mail,
+  Box,
+  Settings2,
   BookOpen,
   HelpCircle,
-  Mail
+  DollarSign
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [resourcesOpen, setResourcesOpen] = useState(false);
   
   const navItems = [
-    { name: "Dashboard", href: "/dashboard", icon: Home },
-    { name: "Templates", href: "/templates", icon: FileCode2 },
-    { name: "Invitations", href: "/invitations", icon: Mail },
-    { name: "Pricings", href: "/dashboard/pricings", icon: DollarSign },
-    { name: "Settings", href: "/dashboard/settings", icon: Settings },
+    { label: "Dashboard", href: "/dashboard", icon: Home },
+    { label: "My Projects", href: "/projects", icon: FileText },
+    { label: "My Templates", href: "/templates", icon: Zap },
+    { label: "Invitations", href: "/invitations", icon: Mail },
+    { label: "Billing", href: "/dashboard/pricings", icon: DollarSign },
   ];
 
   const resourceItems = [
-    { name: "System Templates", href: "/resources/templates", icon: FileText },
-    { name: "Documentation", href: "/resources/docs", icon: BookOpen },
-    { name: "Help Center", href: "/resources/help", icon: HelpCircle },
+    { label: "All Templates", href: "/resources/templates", icon: FileText },
+    { label: "Documentation", href: "/resources/docs", icon: BookOpen },
+    { label: "Help Center", href: "/resources/help", icon: HelpCircle },
   ];
 
   const handleLogout = () => {
     router.push("/login");
   };
 
-  const isResourceActive = resourceItems.some(item => pathname.startsWith(item.href));
-
   return (
-    <aside className="fixed left-0 top-0 h-full bg-[#f9f4eb]/50 border-r border-[#FA5F55]/50 w-64 flex flex-col">
-      {/* Logo/Brand */}
-      <motion.div 
-        className="p-5 border-b border-gray-200"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
+    <motion.aside 
+        initial={{ x: -300 }}
+        animate={{ x: 0 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed top-0 left-0 w-72 h-full z-50 bg-[#fffaf5] border-r border-[#e6dbd1] flex flex-col justify-between py-8 px-6 overflow-y-auto custom-scrollbar"
       >
-        <Link href="/">
-          <Image
-            src="/images/Log.png"
-            alt="Logo"
-            width={150}
-            height={40}
-            style={{ height: 'auto' }}
-          />
-        </Link>
-      </motion.div>
+        <div>
+          {/* Logo */}
+          <div className="mb-12 pl-2">
+            <Link href="/dashboard" className="flex items-center gap-3 group">
+              <div className="bg-[#FA5F55] p-2.5 rounded-xl shadow-lg shadow-[#FA5F55]/20 group-hover:scale-105 transition-transform duration-300">
+                <Box className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-[900] tracking-tight text-[#1f1e24]">
+                  TizKit<span className="text-[#FA5F55]">.</span>
+                </h1>
+                <p className="text-[10px] font-bold text-[#1f1e24]/40 uppercase tracking-[0.2em]">Studio</p>
+              </div>
+            </Link>
+          </div>
 
-      {/* Navigation - Flex grow to push logout to bottom */}
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        {navItems.map((item, index) => {
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
-          
-          return (
-            <motion.div
-              key={item.href}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
+          <div className="space-y-1 mb-8">
+            <Link 
+              href="/dashboard/settings" 
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-[#1f1e24]/60 hover:text-[#FA5F55] hover:bg-[#FA5F55]/5 transition-all group"
             >
-              <Link
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 group border-2",
-                  isActive 
-                    ? "bg-[#262626] text-white hover:bg-[#333333] border-[#FA5F55]" 
-                    : "text-gray-700 hover:bg-gray-100 border-transparent"
-                )}
-              >
-                <Icon className={cn(
-                  "w-5 h-5",
-                  isActive ? "text-white" : "text-[#FA5F55]"
-                )} />
-                <span className="font-medium text-lg">{item.name}</span>
-              </Link>
-            </motion.div>
-          );
-        })}
+              <Settings2 className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" />
+              <span>Dashboard Settings</span>
+            </Link>
+          </div>
 
-        {/* Resources Section - Collapsible */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: navItems.length * 0.1 }}
-        >
-          <button
-            onClick={() => setResourcesOpen(!resourcesOpen)}
-            className={cn(
-              "w-full flex items-center justify-between gap-4 px-4 py-3 rounded-lg transition-all duration-200 border-2",
-              isResourceActive
-                ? "bg-[#262626] text-white hover:bg-[#333333] border-[#FA5F55]"
-                : "text-gray-700 hover:bg-gray-100 border-transparent"
-            )}
-          >
-            <div className="flex items-center gap-4">
-              <Library className={cn(
-                "w-5 h-5",
-                isResourceActive ? "text-white" : "text-[#FA5F55]"
-              )} />
-              <span className="font-medium text-lg">Resources</span>
-            </div>
-            {resourcesOpen ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </button>
+          {/* Navigation */}
+          <nav className="space-y-2">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link key={item.href} href={item.href}>
+                  <div className={cn(
+                    "flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 relative group cursor-pointer",
+                    isActive 
+                      ? "bg-white text-[#FA5F55] shadow-sm ring-1 ring-[#e6dbd1]" 
+                      : "text-[#1f1e24]/60 hover:text-[#1f1e24] hover:bg-white/50"
+                  )}>
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeNav"
+                        className="absolute left-0 w-1 h-6 bg-[#FA5F55] rounded-r-full"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      />
+                    )}
+                    <item.icon className={cn("w-5 h-5", isActive ? "text-[#FA5F55]" : "group-hover:text-[#FA5F55] transition-colors")} />
+                    <span className="font-bold tracking-wide">{item.label}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </nav>
 
-          <AnimatePresence>
-            {resourcesOpen && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="ml-4 mt-1 space-y-1 overflow-hidden"
-              >
+          {/* Resources Section */}
+          <div className="mt-8 pt-6 border-t border-[#e6dbd1]">
+             <div className="text-[10px] font-black text-[#1f1e24]/30 uppercase tracking-[0.2em] px-4 mb-4">
+              Resources
+             </div>
+             <div className="space-y-1">
                 {resourceItems.map((item) => {
-                  const isActive = pathname === item.href;
-                  const Icon = item.icon;
+                  const isActive = pathname.startsWith(item.href);
                   return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 text-sm",
-                        isActive
-                          ? "bg-[#FA5F55]/10 text-[#FA5F55] font-semibold"
-                          : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
-                      )}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span>{item.name}</span>
+                    <Link key={item.href} href={item.href}>
+                      <div className={cn(
+                        "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group cursor-pointer",
+                        isActive 
+                          ? "bg-white text-[#FA5F55] shadow-sm ring-1 ring-[#e6dbd1]" 
+                          : "text-[#1f1e24]/60 hover:text-[#1f1e24] hover:bg-white/50"
+                      )}>
+                        <item.icon className={cn("w-4 h-4", isActive ? "text-[#FA5F55]" : "group-hover:text-[#FA5F55] transition-colors")} />
+                        <span className="font-bold text-sm tracking-wide">{item.label}</span>
+                      </div>
                     </Link>
                   );
                 })}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      </nav>
+             </div>
+          </div>
+        </div>
 
-      {/* Logout Button - At Bottom */}
-      <div className="p-4 border-t border-gray-200">
+      {/* Logout Button */}
+      <div className="p-4 border-t border-[#e6dbd1]">
         <motion.button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all duration-200"
-          whileHover={{ scale: 1.02 }}
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-[#1f1e24]/60 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-200 font-bold"
+          whileHover={{ x: 5 }}
           whileTap={{ scale: 0.98 }}
         >
           <LogOut className="w-5 h-5" />
-          <span className="cursor-pointer font-medium text-lg">Logout</span>
+          <span className="font-medium text-sm">Sign Out</span>
         </motion.button>
       </div>
-    </aside>
+    </motion.aside>
   );
 }

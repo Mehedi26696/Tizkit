@@ -36,7 +36,7 @@ export default function HelpCenterPage() {
   const displayName = user?.full_name || user?.username || 'User';
 
   return (
-    <div className="min-h-screen bg-[#f9f4eb]/50 font-[Helvetica]">
+    <div className="min-h-screen bg-[#fcfcfc] font-[Helvetica]">
       <Sidebar />
       <DashboardHeader />
       
@@ -113,9 +113,9 @@ export default function HelpCenterPage() {
                 <AccordionItem
                   value={faq.id}
                   className={cn(
-                    'border-[#FA5F55]/60 my-2 overflow-hidden rounded-lg border py-2 sm:py-3 px-2 sm:px-3 shadow-md transition-all border-b-2 border-b-[#FA5F55]/40 bg-[#f9f4eb]',
-                    'data-[state=open]:bg-[#f9f4eb]/60 data-[state=open]:shadow-lg data-[state=open]:scale-[1.02]',
-                    'hover:shadow-lg hover:scale-[1.01]',
+                    'border-gray-100 my-2 overflow-hidden rounded-xl border py-2 sm:py-3 px-2 sm:px-3 shadow-sm transition-all bg-white',
+                    'data-[state=open]:bg-white data-[state=open]:shadow-xl data-[state=open]:shadow-black/5 data-[state=open]:scale-[1.02]',
+                    'hover:shadow-md hover:scale-[1.01]',
                   )}
                 >
                   <AccordionPrimitive.Header className="flex">

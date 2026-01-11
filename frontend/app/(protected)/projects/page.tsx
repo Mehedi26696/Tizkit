@@ -138,25 +138,46 @@ export default function ProjectsPage() {
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-[#fffaf5] text-[#1f1e24] selection:bg-[#FA5F55]/20 selection:text-[#FA5F55]">
       <Sidebar />
       <DashboardHeader />
-      <div className="ml-64 min-h-screen bg-[#f9f4eb]/50 p-8 pt-20">
-        <main>
-          {/* Page Header */}
-          <motion.div 
-            className="mb-8"
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
+      
+      <main className="ml-72 pt-24 pb-12 px-10">
+        <div className="max-w-7xl mx-auto space-y-12">
+          <div className="pt-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
-            <h1 className="text-4xl font-bold text-[#1f1e24] mb-2">Projects</h1>
-            <p className="text-[#1f1e24]/60">Manage all your LaTeX projects in one place</p>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#FA5F55] shadow-[0_0_12px_rgba(250,95,85,0.5)]" />
+              <span className="text-xs font-black text-[#FA5F55] uppercase tracking-[0.3em]">Project Hub</span>
+            </div>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <h1 className="text-6xl font-[900] tracking-tight mb-4 leading-none">
+                  My <span className="text-gradient">Projects</span>
+                </h1>
+                <p className="text-xl text-gray-400 max-w-2xl font-medium leading-relaxed">
+                  Manage and evolve your LaTeX masterpieces.
+                </p>
+              </div>
+              <motion.button
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-3 px-8 py-4 bg-[#1f1e24] text-white rounded-2xl font-black shadow-2xl shadow-black/10 hover:bg-[#FA5F55] hover:shadow-[#FA5F55]/20 transition-all text-xs uppercase tracking-widest"
+                whileHover={{ y: -4 }}
+              >
+                <Plus className="w-5 h-5" />
+                New Project
+              </motion.button>
+            </div>
           </motion.div>
+        </div>
 
           {/* Filters and Actions */}
           <motion.div 
-            className="mb-6 flex items-center justify-between gap-4 flex-wrap"
+            className="flex items-center justify-between gap-4 flex-wrap"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -196,36 +217,28 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            <motion.button 
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#FA5F55] text-white rounded-lg hover:bg-[#FA5F55]/90 transition-all shadow-sm font-medium"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setIsModalOpen(true)}
-            >
-              <Plus className="w-4 h-4" />
-              New Project
-            </motion.button>
+            {/* The "New Project" button was moved to the header */}
           </motion.div>
 
           {/* Projects Section */}
           <motion.div 
-            className="bg-gradient-to-br from-[#f9f4eb] via-white to-[#FA5F55]/10 rounded-xl shadow-sm border-2 border-[#1f1e24]/20 p-6"
+            className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
             {/* Search Bar */}
-            <div className="mb-6">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#1f1e24]/40" />
-                <input
-                  type="text"
-                  placeholder="Search projects..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-white border-2 border-[#1f1e24]/20 rounded-lg focus:outline-none focus:border-[#FA5F55] focus:ring-2 focus:ring-[#FA5F55]/20 transition-all text-[#1f1e24] placeholder:text-[#1f1e24]/40"
-                />
-              </div>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8 pt-4">
+          <div className="relative w-full max-w-2xl group">
+             <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 group-focus-within:text-[#FA5F55] transition-all duration-300" />
+             <input 
+               type="text" 
+               placeholder="Search your masterpiece..."
+               value={searchQuery}
+               onChange={(e) => setSearchQuery(e.target.value)}
+               className="w-full pl-16 pr-8 py-5 bg-white border border-[#f1f1f1] rounded-[2rem] focus:border-[#FA5F55]/20 focus:ring-[12px] focus:ring-[#FA5F55]/5 transition-all outline-none text-base font-medium shadow-2xl shadow-black/[0.01]"
+             />
+          </div>
             </div>
 
             {isLoading ? (
@@ -306,9 +319,9 @@ export default function ProjectsPage() {
               </div>
             ) : (
               /* List View */
-              <div className="overflow-x-auto -mx-6 -mb-6">
+              <div className="overflow-x-auto -mx-8 -mb-8">
                 <table className="w-full">
-                  <thead className="bg-[#f9f4eb]/40 border-y-2 border-[#1f1e24]/20">
+                  <thead className="bg-gray-50/50 border-y border-gray-100">
                     <tr>
                       <th className="px-6 py-4 text-left w-12">
                         <input
@@ -497,10 +510,10 @@ export default function ProjectsPage() {
               </div>
             </motion.div>
           )}
-        </main>
-      </div>
+        </div>
+      </main>
 
       <CreateProjectModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-    </>
+    </div>
   );
 }

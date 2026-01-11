@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Settings, ChevronDown, LogOut } from "lucide-react";
-import { useState } from "react";
+import { Settings, ChevronDown, LogOut, Bell, Search, Command } from "lucide-react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/context/AuthContext";
@@ -11,142 +11,116 @@ export default function DashboardHeader() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-  // Generate initials from user data
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const getInitials = () => {
     if (user?.full_name) {
       return user.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     }
-    if (user?.username) {
-      return user.username.slice(0, 2).toUpperCase();
-    }
-    return user?.email?.slice(0, 2).toUpperCase() || 'U';
+    return user?.username?.slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || 'U';
   };
 
   const displayName = user?.full_name || user?.username || 'User';
-  const displayEmail = user?.email || '';
-
-  const dropdownVariants = {
-    hidden: { opacity: 0, y: -10, scale: 0.95 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      scale: 1,
-      transition: { duration: 0.2 }
-    },
-    exit: { 
-      opacity: 0, 
-      y: -10, 
-      scale: 0.95,
-      transition: { duration: 0.15 }
-    }
-  };
 
   return (
     <motion.header 
-      className="bg-[#f9f4eb]/50  px-6 py-4 fixed top-0 left-64 right-0 z-30"
+      className={cn(
+        "fixed top-0 left-72 right-0 z-30 transition-all duration-300 px-10 h-24 flex items-center justify-center",
+        scrolled ? "bg-[#fcfcfc]/80 backdrop-blur-xl border-b border-[#f1f1f1]" : "bg-transparent"
+      )}
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
     >
-      <div className="flex items-center justify-between">
-        {/* Left side - Empty or can add breadcrumbs */}
-        <div></div>
+      <div className="flex items-center justify-between w-full">
+        {/* Search / Command Palette Shortcut */}
+        <div className="flex-1 max-w-xl">
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#FA5F55] transition-all duration-300" />
+            <input 
+              type="text" 
+              placeholder="Search in your universe..." 
+              className="w-full pl-12 pr-14 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:bg-white focus:border-[#FA5F55]/20 focus:ring-8 focus:ring-[#FA5F55]/5 transition-all outline-none font-medium text-sm text-[#1f1e24]"
+            />
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2 py-1 border border-gray-200 rounded-lg text-[10px] text-gray-400 font-black bg-white shadow-sm">
+              <Command className="w-2.5 h-2.5" /> K
+            </div>
+          </div>
+        </div>
 
-        {/* Right side - Settings and User profile */}
+        {/* Actions */}
         <div className="flex items-center gap-3">
-          {/* Settings Icon */}
-          <motion.button 
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-xl transition-all relative">
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-[#FA5F55] rounded-full border-2 border-white" />
+          </button>
+          
+          <button 
             onClick={() => router.push("/dashboard/settings")}
+            className="p-2 text-gray-500 hover:bg-gray-100 rounded-xl transition-all"
           >
             <Settings className="w-5 h-5" />
-          </motion.button>
+          </button>
 
-          {/* User Profile Dropdown */}
+          <div className="h-6 w-[1px] bg-gray-200 mx-2" />
+
+          {/* User Profile */}
           <div className="relative">
-            <motion.button
+            <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center gap-3 p-2 pr-3 hover:bg-gray-100 rounded-lg transition-all border border-gray-200"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-2 group"
             >
-              {/* User Avatar */}
-              <div className="w-9 h-9 bg-[#FA5F55] rounded-full flex items-center justify-center text-white font-semibold text-sm">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#FA5F55] to-[#ff8c85] rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-[#FA5F55]/20 group-hover:scale-105 transition-transform">
                 {getInitials()}
               </div>
-
-              {/* User Info */}
-              <div className="text-left">
-                <p className="text-sm font-medium text-gray-800">{displayName}</p>
-                <p className="text-xs text-gray-500 max-w-[150px] truncate">{displayEmail}</p>
+              <div className="hidden md:block text-left">
+                <p className="text-sm font-bold text-[#1f1e24] line-clamp-1">{displayName}</p>
+                <div className="flex items-center gap-1">
+                   <p className="text-[10px] text-gray-400 font-medium">Free Plan</p>
+                   <ChevronDown className={cn("w-3 h-3 text-gray-400 transition-transform", showDropdown && "rotate-180")} />
+                </div>
               </div>
+            </button>
 
-              <ChevronDown 
-                className={cn(
-                  "w-4 h-4 text-gray-600 transition-transform duration-300",
-                  showDropdown && "rotate-180"
-                )}
-              />
-            </motion.button>
-
-            {/* Dropdown Menu */}
             <AnimatePresence>
               {showDropdown && (
                 <>
-                  <motion.div
-                    className="fixed inset-0 z-40"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setShowDropdown(false)}
-                  />
-                  
+                  <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
                   <motion.div 
-                    className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden"
-                    variants={dropdownVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl shadow-black/5 border border-gray-100 z-50 overflow-hidden"
                   >
-                    <div className="p-4 border-b border-gray-200">
-                      <p className="font-medium text-gray-800">{displayName}</p>
-                      <p className="text-sm text-gray-500 truncate">{displayEmail}</p>
+                    <div className="p-4 bg-gray-50/50 border-b border-gray-50 flex items-center gap-3">
+                       <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-[#FA5F55] font-bold text-lg border border-[#FA5F55]/10 shadow-sm">
+                        {getInitials()}
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="font-bold text-[#1f1e24] truncate">{displayName}</p>
+                        <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+                      </div>
                     </div>
                     
-                    <div className="py-2">
-                      <button
-                        onClick={() => {
-                          router.push("/dashboard/settings");
-                          setShowDropdown(false);
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition"
-                      >
-                        Profile Settings
-                      </button>
-                      <button
-                        onClick={() => {
-                          router.push("/dashboard/billing");
-                          setShowDropdown(false);
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition"
-                      >
-                        Billing & Credits
-                      </button>
+                    <div className="p-2">
+                       <button onClick={() => router.push("/dashboard/settings")} className="w-full flex items-center gap-3 p-3 text-sm text-gray-600 hover:text-[#1f1e24] hover:bg-gray-50 rounded-xl transition-all group">
+                         <Settings className="w-4 h-4 text-gray-400 group-hover:text-[#FA5F55]" />
+                         <span>Account Settings</span>
+                       </button>
                     </div>
 
-                    <div className="border-t border-gray-200 py-2">
+                    <div className="p-2 border-t border-gray-50 bg-gray-50/20">
                       <button
-                        onClick={() => {
-                          logout();
-                          setShowDropdown(false);
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                        onClick={logout}
+                        className="w-full flex items-center gap-3 p-3 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-all"
                       >
                         <LogOut className="w-4 h-4" />
-                        Sign Out
+                        <span className="font-bold">Sign Out</span>
                       </button>
                     </div>
                   </motion.div>

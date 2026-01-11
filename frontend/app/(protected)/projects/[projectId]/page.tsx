@@ -158,7 +158,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#f9f4eb]/50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#fffaf5]/50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 animate-spin text-[#FA5F55]" />
           <p className="text-[#1f1e24]/70">Loading project...</p>
@@ -169,7 +169,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-[#f9f4eb]/50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#fffaf5]/50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-[#1f1e24] mb-2">Project not found</h2>
           <button
@@ -184,7 +184,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f9f4eb]/50">
+    <div className="min-h-screen bg-[#fffaf5]/50">
       {/* Header */}
       <header className="bg-white border-b-2 border-[#FA5F55]/40 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
