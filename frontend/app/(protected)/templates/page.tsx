@@ -17,13 +17,16 @@ import {
   LayoutGrid, 
   Sparkles,
   ArrowRight,
-  Check
+  Check,
+  Share2,
+  Store
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import apiClient from '@/lib/api/client';
 import Sidebar from '../dashboard/components/Sidebar';
 import DashboardHeader from '../dashboard/components/DashboardHeader';
+import ExportToMarketplaceModal from '@/components/marketplace/ExportToMarketplaceModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -54,6 +57,10 @@ export default function TemplatesPage() {
     code: ''
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sharing state
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedTemplateForShare, setSelectedTemplateForShare] = useState<Template | null>(null);
 
   const displayName = user?.full_name?.split(' ')[0] || user?.username || 'User';
 
@@ -138,6 +145,11 @@ export default function TemplatesPage() {
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard!`);
+  };
+
+  const handleShare = (template: Template) => {
+    setSelectedTemplateForShare(template);
+    setShowShareModal(true);
   };
 
   return (
@@ -246,6 +258,13 @@ export default function TemplatesPage() {
                          <button onClick={() => handleDelete(template.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-all">
                             <Trash2 className="w-4 h-4" />
                          </button>
+                          <button 
+                            onClick={() => handleShare(template)} 
+                            className="p-1.5 hover:bg-[#FA5F55]/10 rounded-lg text-gray-400 hover:text-[#FA5F55] transition-all"
+                            title="Share to Marketplace"
+                          >
+                             <Store className="w-4 h-4" />
+                          </button>
                       </div>
                     </div>
 
@@ -404,6 +423,22 @@ export default function TemplatesPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {selectedTemplateForShare && (
+        <ExportToMarketplaceModal 
+          isOpen={showShareModal}
+          onClose={() => {
+            setShowShareModal(false);
+            setSelectedTemplateForShare(null);
+          }}
+          source={{
+            title: selectedTemplateForShare.title,
+            description: selectedTemplateForShare.description,
+            latex_content: selectedTemplateForShare.code,
+            preamble: selectedTemplateForShare.preamble
+          }}
+        />
+      )}
     </div>
   );
 }

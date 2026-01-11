@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Search, Download, Copy, Trash2, ExternalLink, Archive, Filter, Grid, List, Loader2, Pencil, Check, X, Users, Crown } from "lucide-react";
+import { Plus, Search, Download, Copy, Trash2, ExternalLink, Archive, Filter, Grid, List, Loader2, Pencil, Check, X, Users, Crown, Store } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -8,8 +8,9 @@ import { useRouter } from "next/navigation";
 import Sidebar from "../dashboard/components/Sidebar";
 import DashboardHeader from "../dashboard/components/DashboardHeader";
 import CreateProjectModal from "@/components/projects/CreateProjectModal";
-import { getProjects, deleteProject, updateProject } from "@/lib/api/projects";
-import type { ProjectListItem, ProjectStatus } from "@/types/project";
+import { getProjects, deleteProject, updateProject, getProject } from "@/lib/api/projects";
+import type { Project, ProjectListItem, ProjectStatus } from "@/types/project";
+import ExportToMarketplaceModal from "@/components/marketplace/ExportToMarketplaceModal";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/context/AuthContext";
 
@@ -61,6 +62,11 @@ export default function ProjectsPage() {
   // Edit State
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+
+  // Export State
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [selectedProjectFull, setSelectedProjectFull] = useState<Project | null>(null);
+  const [isExportLoading, setIsExportLoading] = useState(false);
 
   // Delete State
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -135,6 +141,20 @@ export default function ProjectsPage() {
   const startEditing = (project: ProjectListItem) => {
     setEditingProjectId(project.id);
     setEditingTitle(project.title);
+  };
+
+  const handleOpenExport = async (projectId: string) => {
+    try {
+      setIsExportLoading(true);
+      const fullProject = await getProject(projectId);
+      setSelectedProjectFull(fullProject);
+      setShowExportModal(true);
+    } catch (error) {
+      console.error('Failed to fetch project for export:', error);
+      toast.error('Failed to load project details for export');
+    } finally {
+      setIsExportLoading(false);
+    }
   };
 
   return (
@@ -302,6 +322,16 @@ export default function ProjectsPage() {
                     
                     {/* Hover Actions */}
                     <div className="absolute top-4 right-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenExport(project.id);
+                        }}
+                        className="p-1 hover:bg-[#FA5F55]/10 rounded text-[#FA5F55]"
+                        title="Export to Marketplace"
+                      >
+                        <Store className="w-4 h-4" />
+                      </button>
                       {project.role !== 'collaborator' && (
                         <button
                           onClick={(e) => {
@@ -424,6 +454,15 @@ export default function ProjectsPage() {
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
                               className="p-2 hover:bg-[#FA5F55]/10 rounded-lg transition-colors"
+                              title="Export to Marketplace"
+                              onClick={() => handleOpenExport(project.id)}
+                            >
+                              <Store className="w-4 h-4 text-[#FA5F55]" />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              className="p-2 hover:bg-[#FA5F55]/10 rounded-lg transition-colors"
                               title="Rename"
                               onClick={() => startEditing(project)}
                             >
@@ -514,6 +553,34 @@ export default function ProjectsPage() {
       </main>
 
       <CreateProjectModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
+      {selectedProjectFull && (
+        <ExportToMarketplaceModal 
+          isOpen={showExportModal}
+          onClose={() => {
+            setShowExportModal(false);
+            setSelectedProjectFull(null);
+          }}
+          source={selectedProjectFull}
+        />
+      )}
+
+      {/* Global Loading Overlay */}
+      <AnimatePresence>
+        {isExportLoading && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center"
+          >
+            <div className="bg-white p-10 rounded-[3rem] shadow-2xl flex flex-col items-center gap-6">
+               <Loader2 className="w-12 h-12 text-[#FA5F55] animate-spin" />
+               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#1f1e24]">Drafting Marketplace Manifest...</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

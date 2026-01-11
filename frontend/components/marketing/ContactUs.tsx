@@ -181,8 +181,8 @@ export default function ContactUs() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[#1f1e24]/60 mb-1">Email us at</p>
-                  <a href="mailto:subha9.5roy350@gmail.com" className="text-[#1f1e24] font-medium hover:text-[#FA5F55] transition-colors">
-                    subha9.5roy350@gmail.com
+                  <a href="mailto:Tizkit@gmai.com" className="text-[#1f1e24] font-medium hover:text-[#FA5F55] transition-colors">
+                    Tizkit@gmai.com
                   </a>
                 </div>
               </motion.div>
@@ -198,7 +198,7 @@ export default function ContactUs() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[#1f1e24]/60 mb-1">Call us at</p>
-                  <p className="text-[#1f1e24] font-medium">XXXXX XXXXX</p>
+                  <p className="text-[#1f1e24] font-medium">01540201438</p>
                 </div>
               </motion.div>
 
@@ -214,8 +214,8 @@ export default function ContactUs() {
                 <div>
                   <p className="text-sm font-medium text-[#1f1e24]/60 mb-1">Location</p>
                   <p className="text-[#1f1e24] font-medium">
-                    Techno Main Salt Lake,<br />
-                    Sector-V, Kolkata-700091
+                    University of Dhaka,<br />
+                    Dhaka, Bangladesh
                   </p>
                 </div>
               </motion.div>

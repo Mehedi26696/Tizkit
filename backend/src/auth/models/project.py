@@ -3,7 +3,7 @@ Project models for storing user projects and files.
 """
 
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, DateTime, Text, Integer
 from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
@@ -42,7 +42,8 @@ class Project(SQLModel, table=True):
     status: ProjectStatus = Field(default=ProjectStatus.DRAFT)
     
     # LaTeX specific fields (for combined output)
-    latex_content: Optional[str] = Field(default=None)  # Main LaTeX content
+    latex_content: Optional[str] = Field(default=None, sa_column=Column(Text))  # Main LaTeX content
+    preamble: Optional[str] = Field(default=None, sa_column=Column(Text))  # Structural Preamble
     compiled_pdf_url: Optional[str] = Field(default=None)
     preview_image_url: Optional[str] = Field(default=None)
     

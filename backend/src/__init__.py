@@ -148,6 +148,13 @@ try:
 except Exception:
     logger.exception("Failed to import/include collaboration router")
 
+# Marketplace routes
+try:
+    from src.marketplace.routes import marketplace_router as _marketplace_router
+    app.include_router(_marketplace_router, prefix="/marketplace", tags=["marketplace"])
+except Exception:
+    logger.exception("Failed to import/include marketplace router")
+
 
  
 

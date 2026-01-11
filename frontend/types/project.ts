@@ -85,12 +85,17 @@ export interface Project {
   description: string | null;
   status: ProjectStatus;
   latex_content: string | null;
+  preamble: string | null;
   compiled_pdf_url: string | null;
   preview_image_url: string | null;
   is_template: boolean;
   tags: string | null;
+  owner_name?: string;
+  collaborators?: ProjectCollaboratorInfo[];
   created_at: string;
   updated_at: string;
+  files?: ProjectFile[];
+  sub_projects?: SubProjectListItem[];
 }
 
 export interface ProjectCollaboratorInfo {
@@ -100,24 +105,7 @@ export interface ProjectCollaboratorInfo {
   role: string;
 }
 
-export interface Project {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string | null;
-  status: ProjectStatus;
-  latex_content: string | null;
-  compiled_pdf_url: string | null;
-  preview_image_url: string | null;
-  is_template: boolean;
-  tags: string | null;
-  owner_name: string;
-  collaborators: ProjectCollaboratorInfo[];
-  created_at: string;
-  updated_at: string;
-  files: ProjectFile[];
-  sub_projects?: SubProjectListItem[];
-}
+// Consolidated duplicate definitions
 
 export interface ProjectListItem {
   id: string;
@@ -137,6 +125,7 @@ export interface ProjectCreate {
   description?: string;
   status?: ProjectStatus;
   latex_content?: string;
+  preamble?: string;
   tags?: string;
 }
 
@@ -145,6 +134,7 @@ export interface ProjectUpdate {
   description?: string;
   status?: ProjectStatus;
   latex_content?: string;
+  preamble?: string;
   compiled_pdf_url?: string;
   preview_image_url?: string;
   tags?: string;

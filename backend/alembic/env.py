@@ -8,10 +8,12 @@ from sqlmodel import SQLModel
 from src.config import settings
 
 # ensure model modules are imported so SQLModel.metadata is populated
-# Alembic's autogenerate uses target_metadata; SQLModel collects tables when
-# model classes are imported, so import any modules that declare models here.
-# Add more imports if you create models in other subpackages.
-import src.auth.models.user  # noqa: F401
+import src.auth.models.user
+import src.auth.models.project
+import src.auth.models.sub_project
+import src.auth.models.user_template
+import src.auth.models.credits
+import src.marketplace.models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
