@@ -15,8 +15,6 @@ import { getSubProjects, createSubProject, deleteSubProject, getSubProjectTypeLa
 import type { Project, ProjectFile, SubProjectListItem, SubProjectType } from '@/types/project';
 import { PREBUILT_PROJECTS } from '@/lib/constants/prebuilt-projects';
 import CollaboratorsModal from '@/components/CollaboratorsModal';
-import ExportToMarketplaceModal from '@/components/marketplace/ExportToMarketplaceModal';
-import { Store } from 'lucide-react';
 
 interface PageProps {
   params: Promise<{ projectId: string }>;
@@ -35,7 +33,6 @@ export default function ProjectDetailPage({ params }: PageProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'file' | 'subproject'; id: string } | null>(null);
   const [showCollaborators, setShowCollaborators] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
   
   const isOwner = user?.id === project?.user_id;
   
@@ -228,16 +225,6 @@ export default function ProjectDetailPage({ params }: PageProps) {
               >
                 <Users className="w-4 h-4" />
                 Collaborators
-              </button>
-            )}
-            {isOwner && (
-              <button
-                onClick={() => setShowExportModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-[#1f1e24] rounded-lg border-2 border-[#FA5F55]/20 hover:border-[#FA5F55] transition-all hover:bg-[#FA5F55]/5"
-                title="Export to Marketplace"
-              >
-                <Store className="w-4 h-4 text-[#FA5F55]" />
-                Marketplace
               </button>
             )}
             <button
@@ -597,13 +584,6 @@ export default function ProjectDetailPage({ params }: PageProps) {
         isOwner={isOwner}
       />
       
-      {project && (
-        <ExportToMarketplaceModal
-          isOpen={showExportModal}
-          onClose={() => setShowExportModal(false)}
-          source={project}
-        />
-      )}
     </div>
   );
 }

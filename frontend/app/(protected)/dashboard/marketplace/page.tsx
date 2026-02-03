@@ -19,7 +19,6 @@ import {
   Clock,
   Box,
   Library,
-  Plus,
   Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,7 +26,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getMarketplaceCategories, listMarketplaceItems, deleteMarketplaceItem } from "@/lib/api/marketplace";
 import { getProject, getProjects } from "@/lib/api/projects";
-import type { MarketplaceCategory, MarketplaceItem, MarketplaceItemType } from "@/types/marketplace";
+import type { MarketplaceCategory, MarketplaceItem } from "@/types/marketplace";
 import ProjectPickerModal from "@/components/marketplace/ProjectPickerModal";
 import ExportToMarketplaceModal from "@/components/marketplace/ExportToMarketplaceModal";
 import type { Project, ProjectListItem } from "@/types/project";
@@ -42,7 +41,6 @@ export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'top_rated'>('newest');
-  const [itemType, setItemType] = useState<MarketplaceItemType | 'all'>('all');
   const [activeTab, setActiveTab] = useState<'explore' | 'creator'>('explore');
   const { user } = useAuth();
 
@@ -55,7 +53,7 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedCategory, sortBy, itemType, activeTab, creatorSubTab]);
+  }, [selectedCategory, sortBy, activeTab, creatorSubTab]);
 
   const fetchData = async () => {
     try {
@@ -64,7 +62,7 @@ export default function MarketplacePage() {
         getMarketplaceCategories(),
         listMarketplaceItems({
           category_id: selectedCategory || undefined,
-          item_type: itemType === 'all' ? undefined : itemType,
+          item_type: 'template',
           sort_by: sortBy,
           user_id: activeTab === 'creator' && creatorSubTab === 'published' ? user?.id : undefined
         }),
@@ -90,6 +88,26 @@ export default function MarketplacePage() {
     );
   }, [items, searchQuery]);
 
+  const marketplaceStats = useMemo(() => {
+    const totalTemplates = items.length;
+    const totalCategories = categories.length;
+    const totalInstalls = items.reduce((sum, item) => sum + (item.usage_count || 0), 0);
+    const averageRating = totalTemplates
+      ? items.reduce((sum, item) => sum + (item.rating_avg || 0), 0) / totalTemplates
+      : 0;
+    const premiumCount = items.filter(item => !item.is_free).length;
+    const freePercent = totalTemplates ? Math.round(((totalTemplates - premiumCount) / totalTemplates) * 100) : 0;
+
+    return {
+      totalTemplates,
+      totalCategories,
+      totalInstalls,
+      averageRating,
+      premiumCount,
+      freePercent
+    };
+  }, [items, categories]);
+
   const handleProjectSelect = async (projectItem: ProjectListItem) => {
     try {
       setIsFetchingProject(true);
@@ -107,15 +125,15 @@ export default function MarketplacePage() {
 
   const handleDeleteItem = async (itemId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to remove this asset from the ecosystem?")) return;
+    if (!confirm("Are you sure you want to remove this template from the marketplace?")) return;
     
     try {
       await deleteMarketplaceItem(itemId);
-      toast.success("Asset removed successfully");
+      toast.success("Template removed from marketplace");
       setItems(prev => prev.filter(item => item.id !== itemId));
     } catch (error) {
       console.error("Failed to delete item:", error);
-      toast.error("Failed to remove asset");
+      toast.error("Failed to remove template");
     }
   };
 
@@ -147,18 +165,16 @@ export default function MarketplacePage() {
                      <h1 className="text-8xl font-[1000] tracking-tighter mb-8 leading-[0.85]">
                         Template <br /> <span className="text-[#FA5F55]">Ecosystem.</span>
                      </h1>
-                     <p className="text-xl text-white/50 max-w-xl font-medium leading-relaxed mb-12">
-                        Acquire and deploy professional LaTeX templates and high-fidelity snippets engineered for precision.
-                     </p>
+                    <p className="text-xl text-white/50 max-w-xl font-medium leading-relaxed mb-12">
+                      Acquire and deploy professional LaTeX templates engineered for precision.
+                    </p>
+                    <div className="flex flex-wrap gap-4 text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-10">
+                       <span>{marketplaceStats.totalCategories.toLocaleString()} Categories</span>
+                       <span>Avg Rating {marketplaceStats.averageRating.toFixed(1)}</span>
+                    </div>
                     <div className="flex gap-4">
                        <button className="px-10 py-5 bg-[#FA5F55] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-[#FA5F55]/20 hover:scale-105 active:scale-95 transition-all">
                          Latest Additions
-                       </button>
-                       <button 
-                        onClick={() => setIsPickerOpen(true)}
-                        className="px-10 py-5 bg-white/10 hover:bg-white text-white hover:text-[#1f1e24] rounded-2xl font-black text-xs uppercase tracking-widest border border-white/10 transition-all flex items-center gap-3"
-                       >
-                         Contribute Asset <Plus className="w-4 h-4" />
                        </button>
                     </div>
                  </div>
@@ -167,25 +183,25 @@ export default function MarketplacePage() {
                     <div className="space-y-4">
                        <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 mt-12">
                           <TrendingUp className="w-8 h-8 text-[#FA5F55] mb-4" />
-                          <p className="text-3xl font-black mb-1">2.4k+</p>
-                          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Active Installs</p>
+                          <p className="text-3xl font-black mb-1">{marketplaceStats.totalInstalls.toLocaleString()}</p>
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Installs</p>
                        </div>
                        <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10">
                           <Award className="w-8 h-8 text-[#FA5F55] mb-4" />
-                          <p className="text-3xl font-black mb-1">500+</p>
-                          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Verified Templates</p>
+                          <p className="text-3xl font-black mb-1">{marketplaceStats.totalTemplates.toLocaleString()}</p>
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Templates</p>
                        </div>
                     </div>
                     <div className="space-y-4 mt-8">
                        <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10">
                           <Box className="w-8 h-8 text-[#FA5F55] mb-4" />
-                          <p className="text-3xl font-black mb-1">100%</p>
-                          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Open Logic</p>
+                          <p className="text-3xl font-black mb-1">{marketplaceStats.freePercent}%</p>
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Free Templates</p>
                        </div>
                        <div className="bg-[#FA5F55] rounded-3xl p-8 shadow-2xl shadow-[#FA5F55]/20">
                           <Zap className="w-8 h-8 text-white mb-4" />
-                          <p className="text-3xl font-black mb-1 text-white">PRO</p>
-                          <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Premium Assets</p>
+                          <p className="text-3xl font-black mb-1 text-white">{marketplaceStats.premiumCount.toLocaleString()}</p>
+                          <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Premium Templates</p>
                        </div>
                     </div>
                  </div>
@@ -272,25 +288,8 @@ export default function MarketplacePage() {
 
                 {/* Filters */}
                 <div className="flex items-center gap-3">
-                   <div className="flex bg-white p-1.5 rounded-2xl border border-[#f1f1f1]">
-                      {[
-                        { label: 'All', value: 'all' },
-                        { label: 'Templates', value: 'template' },
-                        { label: 'Snippets', value: 'snippet' }
-                      ].map((type) => (
-                        <button
-                          key={type.value}
-                          onClick={() => setItemType(type.value as any)}
-                          className={cn(
-                            "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                            itemType === type.value 
-                              ? "bg-[#1f1e24] text-white shadow-lg" 
-                              : "text-gray-400 hover:text-[#1f1e24]"
-                          )}
-                        >
-                          {type.label}
-                        </button>
-                      ))}
+                   <div className="flex items-center bg-white px-6 py-3 rounded-2xl border border-[#f1f1f1]">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#1f1e24]">Templates</span>
                    </div>
                    
                    <div className="relative group">
@@ -408,48 +407,27 @@ export default function MarketplacePage() {
               )}
           </section>
 
-          {/* Call to Action - Join the Creator Community */}
-          {!isLoading && (activeTab === 'explore' && filteredItems.length > 0 || activeTab === 'creator') && (
-            <section className="bg-linear-to-r from-[#FA5F55] to-[#ff7b73] rounded-[3rem] p-16 text-white relative overflow-hidden shadow-2xl shadow-[#FA5F55]/20">
-               <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('/images/pattern.svg')] bg-repeat" />
-               <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12 text-center md:text-left">
-                  <div className="max-w-xl">
-                     <h2 className="text-5xl font-[1000] mb-6 leading-tight">Become a Creator.</h2>
-                     <p className="text-white/80 text-lg font-bold leading-relaxed">
-                        Have a beautiful template or a useful TikZ snippet? Share it with the community and build your reputation as a LaTeX expert.
-                     </p>
-                  </div>
-                   <button 
-                    onClick={() => setIsPickerOpen(true)}
-                    className="flex-shrink-0 px-12 py-6 bg-[#1f1e24] text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-black/20 hover:scale-105 active:scale-95 transition-all"
-                  >
-                    Export to Marketplace
-                  </button>
-               </div>
-
-              {activeTab === 'creator' && (
-                <div className="flex bg-white/50 p-1 rounded-2xl border border-[#f1f1f1] w-fit mb-8 mt-12 mx-auto md:mx-0">
-                  <button
-                    onClick={() => setCreatorSubTab('published')}
-                    className={cn(
-                      "px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                      creatorSubTab === 'published' ? "bg-[#1f1e24] text-white shadow-xl" : "text-gray-400 hover:text-[#1f1e24]"
-                    )}
-                  >
-                    Published Assets
-                  </button>
-                  <button
-                    onClick={() => setCreatorSubTab('drafts')}
-                    className={cn(
-                      "px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                      creatorSubTab === 'drafts' ? "bg-[#FA5F55] text-white shadow-xl" : "text-gray-400 hover:text-[#FA5F55]"
-                    )}
-                  >
-                    Ready to Share ({userProjects.length})
-                  </button>
-                </div>
-              )}
-           </section>
+          {activeTab === 'creator' && (
+            <section className="flex bg-white/50 p-1 rounded-2xl border border-[#f1f1f1] w-fit mb-8 mt-6 mx-auto md:mx-0">
+              <button
+                onClick={() => setCreatorSubTab('published')}
+                className={cn(
+                  "px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                  creatorSubTab === 'published' ? "bg-[#1f1e24] text-white shadow-xl" : "text-gray-400 hover:text-[#1f1e24]"
+                )}
+              >
+                Published Assets
+              </button>
+              <button
+                onClick={() => setCreatorSubTab('drafts')}
+                className={cn(
+                  "px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                  creatorSubTab === 'drafts' ? "bg-[#FA5F55] text-white shadow-xl" : "text-gray-400 hover:text-[#FA5F55]"
+                )}
+              >
+                Ready to Share ({userProjects.length})
+              </button>
+            </section>
           )}
 
         </div>

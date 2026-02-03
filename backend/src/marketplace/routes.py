@@ -173,6 +173,27 @@ def add_review(
     session.refresh(review)
     
     return review
+
+@marketplace_router.get("/items/{item_id}/reviews", response_model=List[ReviewRead])
+def list_reviews(
+    item_id: UUID,
+    session: Session = Depends(get_session)
+):
+    """List reviews for a marketplace item."""
+    results = session.exec(
+        select(MarketplaceReview, User.username)
+        .join(User, MarketplaceReview.user_id == User.id)
+        .where(MarketplaceReview.item_id == item_id)
+        .order_by(MarketplaceReview.created_at.desc())
+    ).all()
+
+    reviews: List[ReviewRead] = []
+    for review, username in results:
+        review_data = review.model_dump()
+        review_data["username"] = username
+        reviews.append(ReviewRead(**review_data))
+
+    return reviews
 @marketplace_router.post("/items/{item_id}/install")
 def install_item(
     item_id: UUID,

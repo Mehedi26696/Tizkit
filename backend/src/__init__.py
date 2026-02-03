@@ -30,6 +30,8 @@ async def lifespan(app: FastAPI):
     # STARTUP
     try:
         logger.info("Lifespan startup: testing database connection...")
+        logger.info(f"Configured TECTONIC_PATH: {settings.TECTONIC_PATH}")
+        logger.info(f"Configured POPPLER_PATH: {settings.POPPLER_PATH}")
         # test_database_connection is synchronous (using sync DB engine). Run it in threadpool.
         ok = await run_in_threadpool(test_database_connection)
         if ok:

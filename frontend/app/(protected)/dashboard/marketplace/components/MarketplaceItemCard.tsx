@@ -39,7 +39,7 @@ export default function MarketplaceItemCard({ item, onClick, onDelete }: Marketp
         <div className="absolute top-6 left-6 right-6">
           <div className="flex items-center justify-between">
             <div className="px-3 py-1 bg-[#1f1e24]/5 rounded-full border border-[#1f1e24]/10">
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#1f1e24]/40">{item.item_type}</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#1f1e24]/40">Template</span>
             </div>
             <div className="flex items-center gap-2">
               <div className={cn(

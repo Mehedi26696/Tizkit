@@ -9,11 +9,7 @@ import {
   Sparkles, 
   ChevronRight, 
   Info,
-  Tag,
-  Layout,
-  Code,
   DollarSign,
-  Layers
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -98,7 +94,7 @@ export default function ExportToMarketplaceModal({ isOpen, onClose, source }: Ex
     is_free: formData.is_free,
     price: formData.price,
     username: user?.username || "Creator",
-    rating_avg: 5.0,
+   rating_avg: 0.0,
     review_count: 0,
     usage_count: 0,
     created_at: new Date().toISOString(),
@@ -108,7 +104,7 @@ export default function ExportToMarketplaceModal({ isOpen, onClose, source }: Ex
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+      <div className="fixed inset-0 z-100 flex items-center justify-center px-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -142,18 +138,13 @@ export default function ExportToMarketplaceModal({ isOpen, onClose, source }: Ex
                </div>
 
                <div className="space-y-8">
-                  {/* Title */}
+                  {/* Asset Type: Templates only */}
                   <div className="space-y-3">
-                     <label className="text-[10px] font-black text-[#1f1e24]/40 uppercase tracking-widest pl-1">Exhibition Title</label>
-                     <input 
-                        type="text"
-                        value={formData.title}
-                        onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                        className="w-full px-8 py-5 bg-gray-50 border border-[#f1f1f1] rounded-2xl focus:border-[#FA5F55]/20 focus:ring-8 focus:ring-[#FA5F55]/5 transition-all outline-none font-bold text-sm"
-                        placeholder="Project Title"
-                     />
+                     <label className="text-[10px] font-black text-[#1f1e24]/40 uppercase tracking-widest pl-1">Engineering Classification</label>
+                     <div className="px-6 py-4 bg-gray-50 border border-[#f1f1f1] rounded-2xl">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[#1f1e24]">Template</span>
+                     </div>
                   </div>
-
                   {/* Monetization */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-gray-50/50 p-6 rounded-3xl border border-[#f1f1f1]">
                      <div className="space-y-3">
@@ -235,30 +226,6 @@ export default function ExportToMarketplaceModal({ isOpen, onClose, source }: Ex
                      </div>
                   )}
 
-                  {/* Asset Type */}
-                  <div className="space-y-3">
-                     <label className="text-[10px] font-black text-[#1f1e24]/40 uppercase tracking-widest pl-1">Engineering Classification</label>
-                     <div className="grid grid-cols-2 gap-4">
-                        {[
-                           { id: 'template', label: 'Template', icon: Layout },
-                           { id: 'project', label: 'Project', icon: Layers }
-                        ].map(type => (
-                           <button
-                              key={type.id}
-                              onClick={() => setFormData(prev => ({ ...prev, item_type: type.id as any }))}
-                              className={cn(
-                                 "flex items-center gap-3 p-5 rounded-2xl border-2 transition-all",
-                                 formData.item_type === type.id 
-                                    ? "border-[#FA5F55] bg-[#FA5F55]/5 text-[#FA5F55]" 
-                                    : "border-[#f1f1f1] hover:border-gray-200 text-gray-400"
-                              )}
-                           >
-                              <type.icon className="w-5 h-5" />
-                              <span className="text-[10px] font-black uppercase tracking-widest">{type.label}</span>
-                           </button>
-                        ))}
-                     </div>
-                  </div>
                </div>
 
                <div className="pt-6">

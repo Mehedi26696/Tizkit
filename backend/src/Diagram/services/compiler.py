@@ -95,8 +95,8 @@ class DiagramLatexCompiler:
                 try:
                     result = subprocess.run([path, '--version'], capture_output=True, timeout=10)
                     if result.returncode == 0:
-                        tectonic_cmd = path
-                        print(f"DiagramCompiler: Found Tectonic at: {path}")
+                        tectonic_cmd = str(Path(path).expanduser().resolve())
+                        print(f"DiagramCompiler: Found Tectonic at: {tectonic_cmd}")
                         break
                     else:
                         print(f"DiagramCompiler: Tectonic at {path} returned code {result.returncode}")

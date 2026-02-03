@@ -1,5 +1,6 @@
  
 import os
+from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -84,12 +85,20 @@ class Settings:
         executable names/locations so callers can probe which one exists.
         """
         candidates = []
+        base_dir = Path(__file__).resolve().parents[1]
         if getattr(self, "TECTONIC_PATH", None):
             candidates.append(self.TECTONIC_PATH)
+            try:
+                configured_path = Path(self.TECTONIC_PATH)
+                if not configured_path.is_absolute():
+                    candidates.append(str(base_dir / configured_path))
+            except Exception:
+                pass
         # Common names to try (will work if on PATH)
         candidates.extend(["tectonic", "tectonic.exe"])
         # Common Windows portable location inside repo
         candidates.append(os.path.join(os.getcwd(), "tectonic", "tectonic.exe"))
+        candidates.append(str(base_dir / "tectonic" / "tectonic.exe"))
         return candidates
 
     def get_poppler_paths(self) -> list[str]:
@@ -99,10 +108,18 @@ class Settings:
         configured `POPPLER_PATH` if set, plus some common locations.
         """
         candidates = []
+        base_dir = Path(__file__).resolve().parents[1]
         if getattr(self, "POPPLER_PATH", None):
             candidates.append(self.POPPLER_PATH)
+            try:
+                configured_path = Path(self.POPPLER_PATH)
+                if not configured_path.is_absolute():
+                    candidates.append(str(base_dir / configured_path))
+            except Exception:
+                pass
         # Common locations on Windows and in this project
         candidates.append(os.path.join(os.getcwd(), "poppler-23.01.0", "Library", "bin"))
+        candidates.append(str(base_dir / "poppler-23.01.0" / "Library" / "bin"))
         candidates.append(r"C:\Program Files\poppler-0.68.0\bin")
         candidates.append(r"C:\poppler\bin")
         return candidates

@@ -119,8 +119,8 @@ class ImageToLatexCompiler:
 				try:
 					result = subprocess.run([path, '--version'], capture_output=True, timeout=10)
 					if result.returncode == 0:
-						tectonic_cmd = path
-						print(f"ImageToLatexCompiler: Found working Tectonic at: {path}")
+						tectonic_cmd = str(Path(path).expanduser().resolve())
+						print(f"ImageToLatexCompiler: Found working Tectonic at: {tectonic_cmd}")
 						break
 					else:
 						print(f"ImageToLatexCompiler: Path {path} returned non-zero exit code")

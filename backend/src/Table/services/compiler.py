@@ -95,8 +95,8 @@ class TableLatexCompiler:
                 try:
                     result = subprocess.run([path, '--version'], capture_output=True, timeout=10)
                     if result.returncode == 0:
-                        tectonic_cmd = path
-                        print(f"TableCompiler: Found Tectonic at: {path}")
+                        tectonic_cmd = str(Path(path).expanduser().resolve())
+                        print(f"TableCompiler: Found Tectonic at: {tectonic_cmd}")
                         break
                     else:
                         print(f"TableCompiler: Tectonic at {path} returned code {result.returncode}")

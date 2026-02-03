@@ -69,6 +69,14 @@ export async function submitMarketplaceReview(data: {
   const response = await apiClient.post<MarketplaceReview>(`/marketplace/items/${data.item_id}/reviews`, data);
   return response.data;
 }
+
+/**
+ * List reviews for a marketplace item
+ */
+export async function listMarketplaceReviews(itemId: string): Promise<MarketplaceReview[]> {
+  const response = await apiClient.get<MarketplaceReview[]>(`/marketplace/items/${itemId}/reviews`);
+  return response.data;
+}
 /**
  * Install a marketplace item (deploy to user's project library)
  */

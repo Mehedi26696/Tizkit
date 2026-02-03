@@ -21,12 +21,11 @@ import {
   Loader2,
   FileText,
   ShieldCheck,
-  TrendingUp,
   Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { getMarketplaceItem, submitMarketplaceReview, installMarketplaceItem, deleteMarketplaceItem } from "@/lib/api/marketplace";
+import { getMarketplaceItem, submitMarketplaceReview, installMarketplaceItem, deleteMarketplaceItem, listMarketplaceReviews } from "@/lib/api/marketplace";
 import { useAuth } from "@/lib/context/AuthContext";
 import type { MarketplaceItem, MarketplaceReview } from "@/types/marketplace";
 
@@ -42,18 +41,22 @@ export default function MarketplaceItemDetailPage() {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   
-  const [userRating, setUserRating] = useState(5);
+   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState("");
 
   useEffect(() => {
     fetchItem();
   }, [itemId]);
 
-  const fetchItem = async () => {
+   const fetchItem = async () => {
     try {
       setIsLoading(true);
-      const data = await getMarketplaceItem(itemId);
-      setItem(data);
+         const [data, reviewsData] = await Promise.all([
+            getMarketplaceItem(itemId),
+            listMarketplaceReviews(itemId)
+         ]);
+         setItem(data);
+         setReviews(reviewsData);
     } catch (error) {
       console.error('Failed to fetch item:', error);
       toast.error('Failed to load item detail');
@@ -67,15 +70,9 @@ export default function MarketplaceItemDetailPage() {
     try {
       setIsInstalling(true);
       
-      const result = await installMarketplaceItem(item.id);
-      
-      if (result.type === 'project') {
-        toast.success('Successfully added to your professional projects!');
-        router.push(`/projects/${result.id}`);
-      } else {
-        toast.success('Successfully added to your personal templates!');
-        router.push('/templates');
-      }
+         await installMarketplaceItem(item.id);
+         toast.success('Successfully added to your personal templates!');
+         router.push('/templates');
     } catch (error) {
       console.error('Failed to install template:', error);
       toast.error('Failed to add template to workspace');
@@ -84,40 +81,50 @@ export default function MarketplaceItemDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
+   const handleDelete = async () => {
     if (!item) return;
-    if (!confirm("Are you sure you want to remove this asset from the ecosystem? This action cannot be undone.")) return;
+      if (!confirm("Are you sure you want to remove this template from the marketplace? This action cannot be undone.")) return;
     
     try {
       await deleteMarketplaceItem(item.id);
-      toast.success("Asset removed successfully");
+      toast.success("Template removed from marketplace");
       router.push("/dashboard/marketplace");
     } catch (error) {
       console.error('Failed to delete item:', error);
-      toast.error('Failed to remove asset');
+         toast.error('Failed to remove template');
     }
   };
 
   const handleSubmitReview = async () => {
     if (!item) return;
-    if (!userComment.trim()) {
-      toast.error("Please add a comment");
+      if (userRating <= 0) {
+         toast.error("Please select a rating");
+         return;
+      }
+
+      if (!userComment.trim()) {
+         toast.error("Please add a comment");
       return;
     }
 
     try {
       setIsSubmittingReview(true);
-      await submitMarketplaceReview({
+         await submitMarketplaceReview({
         item_id: item.id,
         rating: userRating,
         comment: userComment
       });
       toast.success("Review submitted! Thank you.");
       setUserComment("");
-      fetchItem(); // Refresh ratings
-    } catch (error) {
-      console.error('Failed to submit review:', error);
-      toast.error('Failed to submit review');
+         fetchItem(); // Refresh ratings and reviews
+      } catch (error: any) {
+         console.error('Failed to submit review:', error);
+         const detail = error?.response?.data?.detail?.toString?.() || "";
+         if (detail.toLowerCase().includes("already reviewed")) {
+            toast.warning("You've already rated this template");
+         } else {
+            toast.error('Failed to submit review');
+         }
     } finally {
       setIsSubmittingReview(false);
     }
@@ -173,7 +180,7 @@ export default function MarketplaceItemDetailPage() {
                    
                    <div className="absolute top-8 left-8">
                       <div className="bg-[#1f1e24] text-white px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl">
-                         {item.item_type}
+                         Template
                       </div>
                    </div>
                 </motion.div>
@@ -210,19 +217,19 @@ export default function MarketplaceItemDetailPage() {
                      </div>
                    )}
                    
-                   {/* Code Snippet Preview (Placeholder) */}
+                   {/* Template Code Preview */}
                    {item.latex_content && (
                      <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                           <h3 className="text-sm font-black text-[#1f1e24] uppercase tracking-widest">Code Intelligence</h3>
+                           <h3 className="text-sm font-black text-[#1f1e24] uppercase tracking-widest">Template Code</h3>
                            <button 
                              onClick={() => {
                                navigator.clipboard.writeText(item.latex_content || "");
                                toast.success("Content copied to clipboard");
                              }}
-                             className="text-xs font-bold text-[#FA5F55] flex items-center gap-2 hover:underline"
+                                           className="text-xs font-bold text-[#FA5F55] flex items-center gap-2 hover:underline"
                            >
-                              <Copy className="w-3.5 h-3.5" /> Copy Snippet
+                                           <Copy className="w-3.5 h-3.5" /> Copy Template Code
                            </button>
                         </div>
                         <div className="bg-[#1f1e24] rounded-2xl p-8 overflow-hidden relative">
@@ -294,13 +301,6 @@ export default function MarketplaceItemDetailPage() {
                          <span className="text-sm font-black text-[#1f1e24]">
                            {new Date(item.created_at).toLocaleDateString()}
                          </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Deployments</span>
-                         <div className="flex items-center gap-2 text-green-500">
-                            <span className="text-sm font-black">{item.usage_count}</span>
-                            <TrendingUp className="w-3.5 h-3.5" />
-                         </div>
                       </div>
                    </div>
 
@@ -376,10 +376,10 @@ export default function MarketplaceItemDetailPage() {
                         placeholder="Add your thoughts on this template..."
                         className="w-full bg-[#fffaf5] border border-[#f1f1f1] rounded-3xl p-8 text-base font-medium outline-none focus:border-[#FA5F55]/20 focus:ring-[12px] focus:ring-[#FA5F55]/5 transition-all resize-none min-h-[150px]"
                       />
-                      <button 
+                                 <button 
                         onClick={handleSubmitReview}
-                        disabled={isSubmittingReview}
-                        className="absolute bottom-6 right-6 p-4 bg-[#1f1e24] text-white rounded-2xl shadow-xl hover:bg-[#FA5F55] transition-all disabled:opacity-50"
+                                    disabled={isSubmittingReview || userRating <= 0}
+                                    className="absolute bottom-6 right-6 p-4 bg-[#1f1e24] text-white rounded-2xl shadow-xl hover:bg-[#FA5F55] transition-all disabled:opacity-50"
                       >
                          {isSubmittingReview ? (
                            <Loader2 className="w-5 h-5 animate-spin" />
@@ -390,12 +390,46 @@ export default function MarketplaceItemDetailPage() {
                    </div>
                 </div>
 
-                {/* Review List Placeholder */}
+                {/* Reviews */}
                 <div className="space-y-4">
-                   <div className="bg-white/50 border border-dashed border-gray-200 rounded-[2.5rem] py-20 px-8 text-center">
-                      <MessageSquare className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                      <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">Connect with other architects soon.</p>
-                   </div>
+                   {reviews.length === 0 ? (
+                     <div className="bg-white/50 border border-dashed border-gray-200 rounded-[2.5rem] py-20 px-8 text-center">
+                        <MessageSquare className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                        <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">No reviews yet.</p>
+                     </div>
+                   ) : (
+                     reviews.map((review) => (
+                       <div key={review.id} className="bg-white rounded-[2.5rem] p-8 border border-[#f1f1f1] shadow-2xl shadow-black/[0.01]">
+                          <div className="flex items-center justify-between mb-4">
+                             <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-[#FA5F55]/10 flex items-center justify-center">
+                                   <User className="w-4 h-4 text-[#FA5F55]" />
+                                </div>
+                                <div>
+                                   <p className="text-sm font-black text-[#1f1e24]">@{review.username || "Anonymous"}</p>
+                                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                      {new Date(review.created_at).toLocaleDateString()}
+                                   </p>
+                                </div>
+                             </div>
+                             <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={cn(
+                                      "w-4 h-4",
+                                      star <= review.rating ? "text-yellow-500 fill-yellow-500" : "text-gray-100 fill-gray-100"
+                                    )}
+                                  />
+                                ))}
+                             </div>
+                          </div>
+                          <p className="text-sm font-medium text-[#1f1e24]/70 whitespace-pre-wrap">
+                             {review.comment || ""}
+                          </p>
+                       </div>
+                     ))
+                   )}
                 </div>
              </div>
              
