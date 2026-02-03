@@ -9,7 +9,7 @@ import ImageToLatex from '@/app/(protected)/functions/ImageToLatex';
 import HandwrittenFlowchart from '@/app/(protected)/functions/HandwrittenFlowchart';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, Copy, Save, Loader2, Check, Upload, FileText, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Save, Loader2, Check, Upload, FileText, Image as ImageIcon, Trash2, Sparkles } from 'lucide-react';
 import ExportModal from '@/app/(protected)/functions/ExportModal';
 import LatexPreview from '@/app/(protected)/functions/LatexPreview';
 import { latexService } from '@/services/latexService';
@@ -18,6 +18,9 @@ import Splitter from '@/app/(protected)/functions/Splitter';
 import { getProject, updateProject, autoSaveProject, getProjectFiles, uploadProjectFile, deleteFile, getFileSignedUrl, getFileTypeFromExtension } from '@/lib/api/projects';
 import type { Project, ProjectStatus, ProjectFile } from '@/types/project';
 import { toast } from 'sonner';
+import CopilotSidebar from '@/components/copilot/CopilotSidebar';
+import { parseTabular } from '@/lib/utils/latexTable';
+import { parseTikzDiagram } from '@/lib/utils/latexDiagram';
 
 interface EditorPageProps {
   onNavigateToHome: () => void;
@@ -38,6 +41,14 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
   const [isSaving, setIsSaving] = React.useState(false);
   const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
+  const [isCopilotOpen, setIsCopilotOpen] = React.useState(false);
+  const [selectionRange, setSelectionRange] = React.useState<{ start: number; end: number } | null>(null);
+  const [copilotErrors, setCopilotErrors] = React.useState<string>('');
+  const [tableEditorSeed, setTableEditorSeed] = React.useState(0);
+  const [tableEditorInitialData, setTableEditorInitialData] = React.useState<any>(null);
+  const [diagramEditorSeed, setDiagramEditorSeed] = React.useState(0);
+  const [diagramEditorInitialData, setDiagramEditorInitialData] = React.useState<any>(null);
+  const lastLatexSourceRef = React.useRef<'editor' | 'code' | 'copilot'>('editor');
   const autoSaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   
   // File management state
@@ -232,10 +243,114 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
 
   const handleDataChange = (data: any) => {
     console.log('Editor data received:', data);
+    lastLatexSourceRef.current = 'editor';
     setEditorData(data);
     if (data.latexCode) {
       setLatexCode(data.latexCode);
     }
+  };
+
+  const handleLatexEdit = (code: string) => {
+    if ((activeTab === 'table' || activeTab === 'diagram') && autoUpdate) {
+      setAutoUpdate(false);
+      toast.info('Auto-update disabled to keep manual edits.');
+    }
+    lastLatexSourceRef.current = 'code';
+    setLatexCode(code);
+  };
+
+  React.useEffect(() => {
+    if (activeTab !== 'table') return;
+    if (lastLatexSourceRef.current !== 'code') return;
+    const parsed = parseTabular(latexCode);
+    if (parsed) {
+      setTableEditorInitialData(parsed);
+      setTableEditorSeed((prev) => prev + 1);
+    }
+  }, [latexCode, activeTab]);
+
+  React.useEffect(() => {
+    if (activeTab !== 'diagram') return;
+    if (lastLatexSourceRef.current !== 'code') return;
+    const parsed = parseTikzDiagram(latexCode, {
+      nodes: editorData?.nodes,
+      connections: editorData?.connections,
+    });
+    if (parsed) {
+      setDiagramEditorInitialData(parsed);
+      setDiagramEditorSeed((prev) => prev + 1);
+    }
+  }, [latexCode, activeTab]);
+
+  const selectionText = React.useMemo(() => {
+    if (!selectionRange || selectionRange.start === selectionRange.end) return '';
+    return latexCode.slice(selectionRange.start, selectionRange.end);
+  }, [latexCode, selectionRange]);
+
+  const handleCopilotInsert = (snippet: string) => {
+    if (!snippet) return;
+    lastLatexSourceRef.current = 'copilot';
+
+    if ((activeTab === 'table' || activeTab === 'diagram') && autoUpdate) {
+      setAutoUpdate(false);
+      toast.info('Auto-update disabled to keep Copilot edits.');
+    }
+
+    if (selectionRange && selectionRange.start !== selectionRange.end) {
+      const start = selectionRange.start;
+      const end = selectionRange.end;
+      setLatexCode((prev) => prev.slice(0, start) + snippet + prev.slice(end));
+      setSelectionRange({ start, end: start + snippet.length });
+      return;
+    }
+
+    const tabularRegex = /\\begin\{tabular\}[\s\S]*?\\end\{tabular\}/;
+    if (tabularRegex.test(latexCode) && tabularRegex.test(snippet)) {
+      setLatexCode((prev) => prev.replace(tabularRegex, snippet));
+      if (activeTab === 'table') {
+        const parsed = parseTabular(snippet);
+        if (parsed) {
+          setTableEditorInitialData(parsed);
+          setTableEditorSeed((prev) => prev + 1);
+        }
+      }
+      return;
+    }
+
+    const tikzRegex = /\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/;
+    if (tikzRegex.test(latexCode) && tikzRegex.test(snippet)) {
+      setLatexCode((prev) => prev.replace(tikzRegex, snippet));
+      if (activeTab === 'diagram') {
+        const parsed = parseTikzDiagram(snippet, {
+          nodes: editorData?.nodes,
+          connections: editorData?.connections,
+        });
+        if (parsed) {
+          setDiagramEditorInitialData(parsed);
+          setDiagramEditorSeed((prev) => prev + 1);
+        }
+      }
+      return;
+    }
+
+    if (activeTab === 'diagram' && /\\node|\\draw/.test(snippet) && /\\end\{tikzpicture\}/.test(latexCode)) {
+      setLatexCode((prev) => prev.replace(/\\end\{tikzpicture\}/, `${snippet}\n\\end{tikzpicture}`));
+      const parsed = parseTikzDiagram(
+        latexCode.replace(/\\end\{tikzpicture\}/, `${snippet}\n\\end{tikzpicture}`),
+        {
+          nodes: editorData?.nodes,
+          connections: editorData?.connections,
+        }
+      );
+      if (parsed) {
+        setDiagramEditorInitialData(parsed);
+        setDiagramEditorSeed((prev) => prev + 1);
+      }
+      return;
+    }
+
+    setLatexCode((prev) => (prev ? `${prev}\n${snippet}` : snippet));
+    setSelectionRange(null);
   };
 
   const handleImageToLatexGenerated = (latexCode: string) => {
@@ -397,6 +512,15 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
                   <Save className="w-4 h-4" />
                 )}
                 Save
+              </motion.button>
+              <motion.button
+                onClick={() => setIsCopilotOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-white text-[#1f1e24] rounded-lg border border-[#1f1e24]/20 hover:border-[#FA5F55]/40 transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Sparkles className="w-4 h-4 text-[#FA5F55]" />
+                Copilot
               </motion.button>
               <motion.button
                 onClick={() => setIsExportModalOpen(true)}
@@ -688,12 +812,20 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
             <div className="transition-all duration-300">
               {activeTab === 'table' && (
                 <div className="animate-fade-in">
-                  <TableEditor onTableChange={handleDataChange} />
+                  <TableEditor
+                    key={tableEditorSeed}
+                    onTableChange={handleDataChange}
+                    initialData={tableEditorInitialData}
+                  />
                 </div>
               )}
               {activeTab === 'diagram' && (
                 <div className="animate-fade-in">
-                  <DiagramEditor onDiagramChange={handleDataChange} />
+                  <DiagramEditor
+                    key={diagramEditorSeed}
+                    onDiagramChange={handleDataChange}
+                    initialData={diagramEditorInitialData}
+                  />
                 </div>
               )}
               {activeTab === 'imageToLatex' && (
@@ -741,7 +873,8 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
             description=""
             generatedLatex={latexCode}
             onCopy={copyToClipboard}
-            onLatexEdit={setLatexCode}
+            onLatexEdit={handleLatexEdit}
+            onSelectionChange={(start, end) => setSelectionRange({ start, end })}
           />
         </div>
 
@@ -780,6 +913,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
                   latexCode={latexCode} 
                   type={activeTab === 'handwrittenFlowchart' ? 'diagram' : activeTab as 'table' | 'diagram' | 'imageToLatex'} 
                   onLatexFixed={(fixedLatex) => setLatexCode(fixedLatex)}
+                  onCompileErrorChange={(error) => setCopilotErrors(error || '')}
                 />
               </div>
             ) : (
@@ -812,6 +946,16 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
         onClose={() => setIsExportModalOpen(false)}
         latexCode={latexCode}
         type={activeTab as 'table' | 'diagram' | 'imageToLatex'}
+      />
+
+      <CopilotSidebar
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+        latex={latexCode}
+        selection={selectionText}
+        errors={copilotErrors}
+        editorType={activeTab}
+        onInsert={handleCopilotInsert}
       />
     </div>
   );

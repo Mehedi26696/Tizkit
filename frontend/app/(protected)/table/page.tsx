@@ -6,11 +6,14 @@ import { Card } from '@/components/ui/card';
 import { CardHeader } from '@/components/ui/card';
 import { CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Download, Copy } from 'lucide-react';
+import { ArrowLeft, Download, Copy, Sparkles } from 'lucide-react';
 import TableEditor from '@/app/(protected)/functions/TableEditor';
 import LatexPreview from '@/app/(protected)/functions/LatexPreview';
 import ExportModal from '@/app/(protected)/functions/ExportModal';
 import { latexService } from '@/services/latexService';
+import { toast } from 'sonner';
+import CopilotSidebar from '@/components/copilot/CopilotSidebar';
+import { parseTabular } from '@/lib/utils/latexTable';
 
 export default function TablePage() {
   const [latexCode, setLatexCode] = React.useState<string>('');
@@ -18,30 +21,17 @@ export default function TablePage() {
   const [isCompiling, setIsCompiling] = React.useState(false);
   const [tableData, setTableData] = React.useState<any>(null);
   const [autoUpdate, setAutoUpdate] = React.useState(true);
-
-  // Generate LaTeX when table data changes
-  React.useEffect(() => {
-    if (tableData && autoUpdate) {
-      const timeoutId = setTimeout(async () => {
-        try {
-          setIsCompiling(true);
-          const result = await latexService.generateLatex({ type: 'table', data: tableData });
-          if (result.data) {
-            setLatexCode(result.data.latex_code);
-          }
-        } catch (error) {
-          console.error('Failed to generate LaTeX:', error);
-        } finally {
-          setIsCompiling(false);
-        }
-      }, 300);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [tableData, autoUpdate]);
+  const [isCopilotOpen, setIsCopilotOpen] = React.useState(false);
+  const [selectionText, setSelectionText] = React.useState('');
+  const [copilotErrors, setCopilotErrors] = React.useState('');
+  const [tableEditorSeed, setTableEditorSeed] = React.useState(0);
+  const [tableEditorInitialData, setTableEditorInitialData] = React.useState<any>(null);
 
   const handleTableChange = (data: any) => {
     setTableData(data);
+    if (autoUpdate && data?.latexCode) {
+      setLatexCode(data.latexCode);
+    }
   };
 
   const handleManualGenerate = async () => {
@@ -62,6 +52,11 @@ export default function TablePage() {
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(latexCode);
+  };
+
+  const handleCodeSelection = () => {
+    const selected = window.getSelection()?.toString() || '';
+    setSelectionText(selected);
   };
 
   return (
@@ -123,6 +118,14 @@ export default function TablePage() {
               >
                 <Download className="w-4 h-4" /> Export
               </Button>
+              <Button
+                variant="outline"
+                size="default"
+                onClick={() => setIsCopilotOpen(true)}
+                className="hover:scale-105 hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4 text-[#FA5F55]" /> Copilot
+              </Button>
             </div>
           </div>
         </div>
@@ -144,7 +147,11 @@ export default function TablePage() {
                 </div>
               </div>
               <div>
-                <TableEditor onTableChange={handleTableChange} />
+                <TableEditor
+                  key={tableEditorSeed}
+                  onTableChange={handleTableChange}
+                  initialData={tableEditorInitialData}
+                />
               </div>
             </Card>
 
@@ -186,6 +193,7 @@ export default function TablePage() {
                       latexCode={latexCode} 
                       type="table" 
                       onLatexFixed={(fixedLatex) => setLatexCode(fixedLatex)}
+                      onCompileErrorChange={(error) => setCopilotErrors(error || '')}
                     />
                   </div>
                 ) : (
@@ -227,7 +235,11 @@ export default function TablePage() {
               </div>
               <div>
                 {latexCode ? (
-                  <div className="bg-gray-900 rounded-lg p-4 overflow-auto max-h-96">
+                  <div
+                    className="bg-gray-900 rounded-lg p-4 overflow-auto max-h-96"
+                    onMouseUp={handleCodeSelection}
+                    onKeyUp={handleCodeSelection}
+                  >
                     <pre className="text-green-300 text-sm font-mono whitespace-pre-wrap">
                       <code>{latexCode}</code>
                     </pre>
@@ -283,6 +295,34 @@ export default function TablePage() {
         onClose={() => setIsExportModalOpen(false)}
         latexCode={latexCode}
         type="table"
+      />
+
+      <CopilotSidebar
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+        latex={latexCode}
+        selection={selectionText}
+        errors={copilotErrors}
+        editorType="table"
+        onInsert={(snippet) => {
+          if (!snippet) return;
+          if (autoUpdate) {
+            setAutoUpdate(false);
+            toast.info('Auto-update disabled to keep Copilot edits.');
+          }
+          const tabularRegex = /\\begin\{tabular\}[\s\S]*?\\end\{tabular\}/;
+          if (tabularRegex.test(latexCode) && tabularRegex.test(snippet)) {
+            setLatexCode((prev) => prev.replace(tabularRegex, snippet));
+            const parsed = parseTabular(snippet);
+            if (parsed) {
+              setTableEditorInitialData(parsed);
+              setTableEditorSeed((prev) => prev + 1);
+              setTableData(parsed);
+            }
+            return;
+          }
+          setLatexCode((prev) => (prev ? `${prev}\n${snippet}` : snippet));
+        }}
       />
     </div>
   );

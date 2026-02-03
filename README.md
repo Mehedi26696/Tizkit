@@ -99,41 +99,50 @@ sequenceDiagram
 
 ---
 
-## � Deep Dive: TizKit Features
+## 🏢 Deep Dive: TizKit Features
 
 ### 1. 🏢 Project Management & Team Collaboration
 Gone are the days of emailing `.tex` files. TizKit introduces a robust, permission-aware file system.
 - **Mother Projects**: The top-level container holding all assets, templates, and sub-projects.
 - **Role-Based Access Control (RBAC)**:
-    - **Owners**: Full authority. Can delete projects, manage billing, and invite others.
-    - **Collaborators**: Invited via email. Can edit content, upload files, and trigger compilations. Restricted from destructive actions (Delete Project).
-- **Invitations System**: A dedicated UI for sending, accepting, and rejecting project invites.
-- **Timezone Intelligence**: All timestamps are serialized in strict UTC to ensure global team members see consistent "Last Modified" times.
+    - **Owners**: Full authority. Can manage projects, billing, and collaborators.
+    - **Collaborators**: Can edit content and trigger compilations. Restricted from destructive actions.
+- **Invitations System**: Send, accept, and manage project invites via a dedicated UI.
+- **Global Consistency**: Strict UTC synchronization for all project activities.
 
-### 2. � The Intelligent Table Engineer
+### 2. 🏪 Template Marketplace
+TizKit features a comprehensive marketplace for LaTeX templates, allowing users to discover, use, and even monetize their creations.
+- **Categories**: Browse through structured categories such as Academic, Professional (CV/Resume), Presentation, and Diagrams.
+- **Community Driven**: Rate and review templates from other creators.
+- **Monetization**: Support for both free and premium templates with an integrated credit system.
+- **One-Click Import**: Instantly clone marketplace templates into your personal project space.
+
+### 3. 📊 The Intelligent Table Engineer
 Building complex tables in LaTeX (`\multirow`, `\multicolumn`, `\cmidrule`) is notoriously difficult. TizKit's **Table Editor** solves this.
 - **Grid-First Interface**: An Excel-like experience where you can type directly into cells.
-- **Structure Control**:
-    - **Drag & Drop**: Reorder rows and columns instantly.
-    - **Merge/Split**: Visual controls for spanning cells.
-    - **Sticky Headers**: Manage massive datasets without losing context.
-- **Style Engine**: Apply bold, italic, alignment (L/C/R), and cell colors. The backend automatically generates the necessary `booktabs` and `colortbl` code.
+- **Structure Control**: Drag & Drop rows/columns, Merge/Split cells, and Sticky Headers.
+- **Style Engine**: Apply bold, italic, alignment (L/C/R), and cell colors. The backend automatically generates clean `booktabs` and `colortbl` code.
 
-### 3. 📐 Visual TikZ Studio
+### 4. 📐 Visual TikZ Studio
 A `React-Konva` powered canvas for drawing vector graphics that compile to semantic TikZ code.
 - **Node Library**: Drag rectangles, circles, diamonds, and logic gates onto the canvas.
 - **Smart Connectors**: Draw arrows between nodes. Connectors are "sticky"—they stay attached even if you move the nodes.
-- **Live Compilation**: The backend continuously translates your visual graph into `\node` and `\draw` commands, giving you a real-time PDF preview.
+- **Live Compilation**: The backend continuously translates your visual graph into `\node` and `\draw` commands.
 
-### 4. 🧠 AI Vision Pipeline
+### 5. 🧠 AI Vision & Copilot
 Leveraging **Gemini 2.0 Flash** and advanced OCR to bridge the analog-to-digital gap.
-- **Image-to-LaTeX**: Upload a screenshot of a textbook formula. The AI extracts the semantic math structure (not just characters) and outputs editable LaTeX.
-- **Handwritten Flowcharts**: Sketch a diagram on paper, upload it, and TizKit's vision pipeline interprets the shapes and connections to rebuild it as a digital TikZ diagram.
-- **Self-Healing Code**: If Tectonic compilation fails, the error log is fed back into the AI, which attempts to autofix syntax errors (missing brackets, undefined packages).
+- **Image-to-LaTeX**: Extract semantic math structure from screenshots or textbook photos.
+- **Handwritten Flowcharts**: Interpret hand-drawn sketches on paper and rebuild them as digital TikZ diagrams.
+- **AI Copilot**: An interactive assistant that helps you write LaTeX, explain errors, and suggest improvements.
+- **Self-Healing Code**: The AI attempts to autofix syntax errors detected in the Tectonic compilation logs.
 
-### 5. 📝 User Templates
+### 6. 📝 Pre-built & Custom Templates
+- **System Templates**: Start instantly with professional defaults like:
+    - **Modern Resume**: A clean, banking-style CV using `moderncv`.
+    - **Presentation Slides**: A professional Beamer deck with the `Madrid` theme.
+    - **Academic Paper**: Standard IEEE-style conference template.
+    - **Homework Assignment**: Clean layout for math/science problem sets.
 - **Personal Library**: Save your favorite preambles (packages, macros) as global templates.
-- **One-Click Start**: Initialize new projects using "IEEE Conference", "APA", or your custom "Thesis Template".
 
 ---
 
@@ -142,7 +151,7 @@ Leveraging **Gemini 2.0 Flash** and advanced OCR to bridge the analog-to-digital
 ### Step 1: Initialization
 1.  **Sign Up/Login**: Secure authentication via JWT.
 2.  **Dashboard**: You land on a dashboard showing your Projects and Pending Invitations.
-3.  **Create Project**: Click "+ New Project". Choose a **System Template** (e.g., "Empty", "Article", "Beamer") or a **User Template**.
+3.  **Create Project**: Click "+ New Project". Choose a **System Template** (e.g., "Modern Resume", "Presentation Slides", "Academic Paper") or a **User Template**.
 
 ### Step 2: Asset Management
 1.  **File Manager**: In the project view, upload your images (`.png`, `.jpg`) and `.bib` files.
@@ -150,16 +159,16 @@ Leveraging **Gemini 2.0 Flash** and advanced OCR to bridge the analog-to-digital
 
 ### Step 3: Component Engineering (Sub-Projects)
 Instead of writing one giant `main.tex`, you create specialized components:
-1.  **Click "Add Sub-Project"**: Choose "Table", "Diagram", or "Document".
+1.  **Click "Add Sub-Project"**: Choose "Table", "Diagram", "Document", or "AI Assistant".
 2.  **Table Workflow**:
-    - Enter the visual editor.
-    - Add data, merge cells, style headers.
-    - Click "Save" (or Ctrl+S).
-    - The generated code (e.g., `\begin{tabular}...`) is saved.
+    - Enter the visual editor, add data, merge cells, and style headers.
+    - The backend generates clean `tabular` code automatically.
 3.  **Diagram Workflow**:
-    - Drag shapes onto the canvas.
-    - Connect them with arrows.
-    - The backend generates `\begin{tikzpicture}...`.
+    - Drag shapes and connect them with arrows on the canvas.
+    - Real-time TikZ code generation and preview.
+4.  **AI Vision Workflow**:
+    - Upload an image or flowchart sketch.
+    - AI converts it to editable LaTeX/TikZ code.
 
 ### Step 4: Assembly & Compilation
 1.  **Main Document**: Go to the "Document" sub-project (your `main.tex`).
@@ -177,17 +186,44 @@ Instead of writing one giant `main.tex`, you create specialized components:
 
 ### **Frontend**
 - **Framework**: Next.js 16 (App Router)
-- **State**: React 19 w/ Server Components
-- **Styling**: Tailwind CSS 4, Shadcn UI, Lucide React
-- **Canvas**: React-Konva
-- **Utils**: Sonner (Toast), Framer Motion (Animations)
+- **Language**: TypeScript, React 19
+- **Styling**: Tailwind CSS 4, Shadcn UI, Framer Motion
+- **Canvas**: React-Konva (for TikZ Diagrams)
+- **Components**: Lucide React, Sonner (Toasts)
 
 ### **Backend**
 - **Core**: FastAPI (Python 3.10+)
 - **ORM**: SQLModel (SQLAlchemy 2.0)
-- **Database**: PostgreSQL (Supabase)
-- **Storage**: S3-compatible (Supabase Storage)
-- **LaTeX Engine**: Tectonic (Rust-based distribution)
+- **Database**: PostgreSQL (managed via Supabase)
+- **Migration**: Alembic
+- **AI**: Gemini 2.0 Flash, OCR.space
+- **LaTeX Engine**: Tectonic (Rust-based)
+
+---
+
+## 📂 Project Structure
+
+```text
+├── backend/
+│   ├── alembic/            # Database migrations
+│   ├── src/
+│   │   ├── auth/           # Auth, Users, Projects, Credits
+│   │   ├── ai/             # AI Copilot services
+│   │   ├── Table/          # Table generation engine
+│   │   ├── Diagram/        # TikZ diagram engine
+│   │   ├── ImageToLatex/   # AI Vision & OCR
+│   │   ├── marketplace/    # Template marketplace logic
+│   │   └── utils/          # DB & Storage utilities
+│   └── main.py             # Entry point
+├── frontend/
+│   ├── app/                # Next.js pages & layouts
+│   ├── components/         # React components (UI, projects, marketplace)
+│   ├── lib/
+│   │   ├── api/            # API client & hooks
+│   │   └── constants/      # Pre-built templates & config
+│   └── services/           # Frontend business logic
+└── tectonic/               # Local LaTeX distribution
+```
 
 ---
 

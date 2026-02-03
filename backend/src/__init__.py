@@ -157,6 +157,13 @@ try:
 except Exception:
     logger.exception("Failed to import/include marketplace router")
 
+# AI Copilot routes
+try:
+    from src.ai import ai_router as _ai_router
+    app.include_router(_ai_router, prefix="/ai", tags=["ai"])
+except Exception:
+    logger.exception("Failed to import/include AI router")
+
 
  
 

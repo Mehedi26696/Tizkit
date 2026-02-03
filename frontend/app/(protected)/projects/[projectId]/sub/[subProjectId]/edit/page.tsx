@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Save, Loader2, Copy, Download, Settings, 
   Table, GitBranch, Image as ImageIcon, PenTool, Check, X,
-  FileText, ChevronRight, Upload, Eye, GripVertical, RotateCcw
+  FileText, ChevronRight, Upload, Eye, GripVertical, RotateCcw, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,9 @@ import LatexPreview from '@/app/(protected)/functions/LatexPreview';
 import ExportModal from '@/app/(protected)/functions/ExportModal';
 import { latexService, CreditError } from '@/services/latexService';
 import { AlertTriangle, CreditCard } from 'lucide-react';
+import CopilotSidebar from '@/components/copilot/CopilotSidebar';
+import { parseTabular } from '@/lib/utils/latexTable';
+import { parseTikzDiagram } from '@/lib/utils/latexDiagram';
 
 interface PageProps {
   params: Promise<{ projectId: string; subProjectId: string }>;
@@ -49,6 +52,12 @@ export default function SubProjectEditorPage({ params }: PageProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [showFilePicker, setShowFilePicker] = useState(false);
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
+  const [copilotErrors, setCopilotErrors] = useState('');
+    const [tableEditorSeed, setTableEditorSeed] = useState(0);
+  const [diagramEditorSeed, setDiagramEditorSeed] = useState(0);
+  const lastLatexSourceRef = useRef<'editor' | 'code' | 'copilot'>('editor');
   
   // For Image to LaTeX
   const [selectedImage, setSelectedImage] = useState<{ url: string; filename: string; fileId: string } | null>(null);
@@ -190,6 +199,7 @@ export default function SubProjectEditorPage({ params }: PageProps) {
 
   // Handle editor data change
   const handleEditorChange = useCallback((data: any) => {
+    lastLatexSourceRef.current = 'editor';
     setEditorData(data);
     if (data.latexCode) {
       setLatexCode(data.latexCode);
@@ -199,9 +209,37 @@ export default function SubProjectEditorPage({ params }: PageProps) {
 
   // Handle LaTeX code change (manual edit)
   const handleLatexChange = useCallback((code: string) => {
+    if ((subProject?.sub_project_type === 'table' || subProject?.sub_project_type === 'diagram') && autoUpdate) {
+      setAutoUpdate(false);
+      toast.info('Auto-update disabled to keep manual edits.');
+    }
+    lastLatexSourceRef.current = 'code';
     setLatexCode(code);
     setHasChanges(true);
-  }, []);
+  }, [autoUpdate, subProject?.sub_project_type]);
+
+  useEffect(() => {
+    if (subProject?.sub_project_type !== 'table') return;
+    if (lastLatexSourceRef.current !== 'code') return;
+    const parsed = parseTabular(latexCode);
+    if (parsed) {
+      setEditorData(parsed);
+      setTableEditorSeed((prev) => prev + 1);
+    }
+  }, [latexCode, subProject?.sub_project_type]);
+
+  useEffect(() => {
+    if (subProject?.sub_project_type !== 'diagram') return;
+    if (lastLatexSourceRef.current !== 'code') return;
+    const parsed = parseTikzDiagram(latexCode, {
+      nodes: editorData?.nodes,
+      connections: editorData?.connections,
+    });
+    if (parsed) {
+      setEditorData(parsed);
+      setDiagramEditorSeed((prev) => prev + 1);
+    }
+  }, [latexCode, subProject?.sub_project_type]);
 
   // Save title
   const handleSaveTitle = useCallback(async () => {
@@ -217,6 +255,95 @@ export default function SubProjectEditorPage({ params }: PageProps) {
       toast.error('Failed to update title');
     }
   }, [editTitle, projectId, subProjectId, subProject]);
+
+  const selectionText = React.useMemo(() => {
+    if (!selectionRange || selectionRange.start === selectionRange.end) return '';
+    return latexCode.slice(selectionRange.start, selectionRange.end);
+  }, [latexCode, selectionRange]);
+
+  const handleCopilotInsert = (snippet: string, _meta?: { userMessage?: string }) => {
+    if (!snippet) return;
+    lastLatexSourceRef.current = 'copilot';
+
+    if ((subProject?.sub_project_type === 'table' || subProject?.sub_project_type === 'diagram') && autoUpdate) {
+      setAutoUpdate(false);
+      toast.info('Auto-update disabled to keep Copilot edits.');
+    }
+
+    if (selectionRange && selectionRange.start !== selectionRange.end) {
+      const start = selectionRange.start;
+      const end = selectionRange.end;
+      setLatexCode((prev) => prev.slice(0, start) + snippet + prev.slice(end));
+      setSelectionRange({ start, end: start + snippet.length });
+      setHasChanges(true);
+      return;
+    }
+
+    const tabularRegex = /\\begin\{tabular\}[\s\S]*?\\end\{tabular\}/;
+    if (tabularRegex.test(latexCode) && tabularRegex.test(snippet)) {
+      setLatexCode((prev) => prev.replace(tabularRegex, snippet));
+      if (subProject?.sub_project_type === 'table') {
+        const parsed = parseTabular(snippet);
+        if (parsed) {
+          setEditorData(parsed);
+          setTableEditorSeed((prev) => prev + 1);
+        }
+      }
+      setHasChanges(true);
+      return;
+    }
+
+    const tikzRegex = /\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/;
+    if (tikzRegex.test(latexCode) && tikzRegex.test(snippet)) {
+      setLatexCode((prev) => prev.replace(tikzRegex, snippet));
+      if (subProject?.sub_project_type === 'diagram') {
+        const parsed = parseTikzDiagram(snippet, {
+          nodes: editorData?.nodes,
+          connections: editorData?.connections,
+        });
+        if (parsed) {
+          setEditorData(parsed);
+          setDiagramEditorSeed((prev) => prev + 1);
+        }
+      }
+      setHasChanges(true);
+      return;
+    }
+
+    if (subProject?.sub_project_type === 'diagram' && /\\node|\\draw/.test(snippet) && /\\end\{tikzpicture\}/.test(latexCode)) {
+      const updated = latexCode.replace(/\\end\{tikzpicture\}/, `${snippet}\n\\end{tikzpicture}`);
+      setLatexCode(updated);
+      const parsed = parseTikzDiagram(updated, {
+        nodes: editorData?.nodes,
+        connections: editorData?.connections,
+      });
+      if (parsed) {
+        setEditorData(parsed);
+        setDiagramEditorSeed((prev) => prev + 1);
+      }
+      setHasChanges(true);
+      return;
+    }
+
+    const docEndRegex = /\\end\{document\}/;
+    if (docEndRegex.test(latexCode)) {
+      if (/\\documentclass|\\begin\{document\}|\\end\{document\}/.test(snippet)) {
+        setLatexCode(snippet);
+        setSelectionRange(null);
+        setHasChanges(true);
+        return;
+      }
+      // Otherwise, insert before \end{document} to avoid invalid LaTeX.
+      setLatexCode((prev) => prev.replace(docEndRegex, `${snippet}\n\\end{document}`));
+      setSelectionRange(null);
+      setHasChanges(true);
+      return;
+    }
+
+    setLatexCode((prev) => (prev ? `${prev}\n${snippet}` : snippet));
+    setSelectionRange(null);
+    setHasChanges(true);
+  };
 
   // Select file from project
   const handleSelectFile = async (file: ProjectFile) => {
@@ -499,6 +626,14 @@ export default function SubProjectEditorPage({ params }: PageProps) {
               >
                 <Download className="w-4 h-4" /> Export
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCopilotOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4 text-[#FA5F55]" /> Copilot
+              </Button>
             </div>
           </div>
         </div>
@@ -529,11 +664,11 @@ export default function SubProjectEditorPage({ params }: PageProps) {
 
                 {/* Editor based on type */}
                 {subProject.sub_project_type === 'table' && (
-                  <TableEditor onTableChange={handleEditorChange} initialData={editorData} />
+                  <TableEditor key={tableEditorSeed} onTableChange={handleEditorChange} initialData={editorData} />
                 )}
 
                 {subProject.sub_project_type === 'diagram' && (
-                  <DiagramEditor onDiagramChange={handleEditorChange} initialData={editorData} />
+                  <DiagramEditor key={diagramEditorSeed} onDiagramChange={handleEditorChange} initialData={editorData} />
                 )}
 
                 {(subProject.sub_project_type === 'imageToLatex' || subProject.sub_project_type === 'handwrittenFlowchart') && (
@@ -932,6 +1067,14 @@ export default function SubProjectEditorPage({ params }: PageProps) {
                   <textarea
                     value={latexCode}
                     onChange={(e) => handleLatexChange(e.target.value)}
+                    onSelect={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      setSelectionRange({ start: target.selectionStart, end: target.selectionEnd });
+                    }}
+                    onKeyUp={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      setSelectionRange({ start: target.selectionStart, end: target.selectionEnd });
+                    }}
                     className="w-full h-full bg-gray-900 text-green-300 text-sm font-mono p-4 resize-none focus:outline-none border-none"
                     spellCheck={false}
                     placeholder={subProject.sub_project_type === 'document' 
@@ -986,6 +1129,7 @@ export default function SubProjectEditorPage({ params }: PageProps) {
                         setLatexCode(fixedLatex);
                         setHasChanges(true);
                       }}
+                      onCompileErrorChange={(error) => setCopilotErrors(error || '')}
                     />
                   </div>
                 ) : (
@@ -1068,6 +1212,16 @@ export default function SubProjectEditorPage({ params }: PageProps) {
           subProjectId={subProjectId}
         />
       )}
+
+      <CopilotSidebar
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+        latex={latexCode}
+        selection={selectionText}
+        errors={copilotErrors}
+        editorType={subProject?.sub_project_type}
+        onInsert={handleCopilotInsert}
+      />
     </div>
   );
 }

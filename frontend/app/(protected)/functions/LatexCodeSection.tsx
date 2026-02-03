@@ -11,12 +11,13 @@ interface LatexCodeSectionProps {
   onCopy: () => void;
 }
 
-const LatexCodeSection: React.FC<LatexCodeSectionProps & { onLatexEdit?: (code: string) => void }> = ({
+const LatexCodeSection: React.FC<LatexCodeSectionProps & { onLatexEdit?: (code: string) => void; onSelectionChange?: (start: number, end: number) => void }> = ({
   title = 'LaTeX Source',
   description = 'Generated LaTeX code',
   generatedLatex,
   onCopy,
   onLatexEdit,
+  onSelectionChange,
 }) => {
   return (
     <div className="flex-1 bg-gray-900 text-gray-100 flex flex-col">
@@ -52,6 +53,14 @@ const LatexCodeSection: React.FC<LatexCodeSectionProps & { onLatexEdit?: (code: 
             className="w-full h-full p-6 text-sm font-mono leading-relaxed text-green-300 bg-gray-900 resize-none border-none outline-none"
             value={generatedLatex}
             onChange={e => onLatexEdit && onLatexEdit(e.target.value)}
+            onSelect={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              onSelectionChange && onSelectionChange(target.selectionStart, target.selectionEnd);
+            }}
+            onKeyUp={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              onSelectionChange && onSelectionChange(target.selectionStart, target.selectionEnd);
+            }}
             spellCheck={false}
           />
         ) : (

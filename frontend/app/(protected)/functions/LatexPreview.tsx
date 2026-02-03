@@ -18,9 +18,10 @@ interface LatexPreviewProps {
   type: 'table' | 'diagram' | 'imageToLatex' | 'document';
   subProjectId?: string;
   onLatexFixed?: (fixedLatex: string) => void;
+  onCompileErrorChange?: (error: string | null) => void;
 }
 
-const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, subProjectId, onLatexFixed }) => {
+const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, subProjectId, onLatexFixed, onCompileErrorChange }) => {
   const router = useRouter();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -158,6 +159,21 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ latexCode, type, subProject
 
     return () => clearTimeout(timeoutId);
   }, [latexCode, type]);
+
+  useEffect(() => {
+    let details: string | null = null;
+
+    if (creditError) {
+      details = `Credit error: ${creditError.service.replace(/_/g, ' ')}. Needed: ${creditError.credits_needed}. Available: ${creditError.available_credits}.`;
+    } else if (error) {
+      const lines = error.split(/\r?\n/).filter(Boolean).slice(0, 2);
+      const joined = lines.length > 0 ? lines.join(' | ') : error;
+      const capped = joined.length > 500 ? `${joined.slice(0, 500)}…` : joined;
+      details = `Compiler error: ${capped}`;
+    }
+
+    onCompileErrorChange?.(details);
+  }, [error, creditError, onCompileErrorChange]);
 
   // Cleanup URL when component unmounts or updates
   useEffect(() => {
