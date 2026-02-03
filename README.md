@@ -1,4 +1,4 @@
-# TizKit — The Ultimate LaTeX Engineering Platform 🚀
+# TizKit — AI-Powered LaTeX Workspace
 
 [![Built with Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Powered by FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -7,103 +7,140 @@
 
 **TizKit** is a professional-grade, full-stack platform designed to revolutionize the way researchers, students, and engineers interact with LaTeX. By bridging the gap between complex typesetting code and intuitive visual design, TizKit provides a high-fidelity environment for generating publication-quality diagrams, tables, and documents through interactive editors and state-of-the-art AI Vision.
 
-Unlike standard editors (Overleaf), TizKit focuses on **Component-Based Engineering**—allowing you to build complex tables and diagrams in specialized visual environments before assembling them into a final document.
+At its core, TizKit is built around a **project workspace** with **sub-projects** (Table, Diagram, Document, AI-assisted extraction) so you can engineer parts visually and compile everything into a final PDF.
+
+**What you get**
+- Visual editors for complex **tables** and **TikZ diagrams**
+- AI Vision to convert **images → LaTeX** and **handwriting → TikZ**
+- Fast **compile/preview** loop powered by **Tectonic**
+- Templates (built-in + user templates) and a template marketplace
+
+---
+
+## 📚 Contents
+- [Screenshots](#screenshots)
+- [System Architecture](#system-architecture)
+- [Deep Dive: TizKit Features](#deep-dive-tizkit-features)
+- [The Detailed User Flow](#the-detailed-user-flow)
+- [Tech Stack & Tools](#tech-stack--tools)
+- [Project Structure](#project-structure)
+- [Installation (Local Dev)](#installation-local-dev)
+- [Productivity Shortcuts](#productivity-shortcuts)
+
+## 📸 Screenshots
+
+### Product & Navigation
+
+| | |
+|---|---|
+| ![Home](ScreenShot/Home.PNG) <br/> Landing page | ![Dashboard](ScreenShot/Dashboard.PNG) <br/> Main dashboard overview |
+| ![My Projects](ScreenShot/MyProjects.PNG) <br/> Project list & navigation | ![Documentation](ScreenShot/Documentation.PNG) <br/> In-app docs & guides |
+
+### Templates
+
+| | | |
+|---|---|---|
+| ![System Templates](ScreenShot/SystemTemplates.PNG) <br/> Built-in templates gallery | ![Modern Resume Template](ScreenShot/Resume.png) <br/> ModernCV resume template | ![Presentation Template](ScreenShot/Presentation.png) <br/> Beamer presentation template |
+
+### Editors & AI
+
+| | |
+|---|---|
+| ![Table Editor](ScreenShot/Table.png) <br/> Visual table builder | ![Table Copilot](ScreenShot/Table_Copilot.png) <br/> AI-assisted table generation |
+| ![Diagram Copilot](ScreenShot/Diagram%20Copilot.png) <br/> AI-assisted diagram generation | ![Handwritten Flowchart](ScreenShot/Handwritten%20Flowchart.png) <br/> Handwritten-to-TikZ flowchart |
+
+### Collaboration & Billing
+
+| | | |
+|---|---|---|
+| ![Project Invitations](ScreenShot/Project%20Invitations.png) <br/> Collaboration invites | ![Export](ScreenShot/Export.png) <br/> Export project outputs | ![Billing](ScreenShot/Billing.PNG) <br/> Credits & billing |
 
 ---
 
 ## 🏗 System Architecture
 
-TizKit is built on a distributed service architecture designed for high availability, real-time visual feedback, and reliable data persistence. The system is divided into four distinct layers:
+TizKit is a **Next.js + FastAPI** platform where you edit LaTeX as a workspace (projects + sub-projects) and use specialized tools (Table, Diagram, AI Vision) that all funnel into the same compile/preview pipeline.
 
-### 1. Unified Frontend (Gateway)
-The frontend serves as the primary interface and client-side manager.
-- **Framework**: Next.js 16 (App Router) with React 19.
-- **Responsibility**: Manages optimistic UI updates, local state synchronization, and handles complex visual editing through `React-Konva`.
-- **PDF Rendering**: Utilizes a dedicated rendering pipeline for multi-page PDF previews, providing a high-fidelity viewing experience comparable to desktop LaTeX suites.
+### 1) What Runs Where
 
-### 2. Backend Orchestrator
-A high-performance FastAPI server that acts as the brain of the platform.
-- **Business Logic**: Orchestrates project management, collaborator permissions (RBAC), and service routing.
-- **Credit Lifecycle Management**: Implements a middleware-driven credit enforcement system. Every costly operation (OCR, Flowchart generation, etc.) is validated against a PostgreSQL-backed credit ledger before execution.
-- **Security**: Stateless authentication via JWT, with granular project access control logic ensuring data isolation.
+**Frontend (Next.js)**
+- Hosts the UI and editors (projects, templates, marketplace, table/diagram builders).
+- Talks to the backend using `NEXT_PUBLIC_API_URL`.
+- Renders previews from backend responses (PDF/PNG blobs).
 
-### 3. Engine Tier (Specialized Services)
-The backend delegates computationally intensive tasks to specialized engines:
-- **🧠 AI Vision Engine**: Powered by Gemini 2.0 Flash, this engine performs semantic extraction of mathematical formulas and handwritten diagrams.
-- **⚡ Tectonic Compilation Engine**: A Rust-based LaTeX distribution that executes inside isolated environments. It fetches only the required packages on-the-fly, ensuring fast and consistent builds without the overhead of a full TeX Live installation.
-- **🔍 OCR Text Engine**: Specialized for high-accuracy text extraction from academic documents and textbook captures.
+**Backend API (FastAPI)**
+- Single API app that mounts feature routers (see `backend/src/__init__.py`).
+- Key route groups:
+  - **Workspace**: `/projects`, `/templates`, `/marketplace`, `/api` (collaboration)
+  - **Editors/Engines**: `/table`, `/diagram`, `/image_to_latex`, `/handwritten_flowchart`
+  - **AI**: `/ai`
+  - **Auth/Credits**: `/auth`, `/credits`
+  - **Health**: `/health`
 
-### 4. Cloud Persistence Layer
-Powered by Supabase, providing a robust backbone for all data.
-- **Relational DB**: PostgreSQL managed through SQLModel. Stores users, projects, sub-projects, collaborations, and a comprehensive audit log of credit transactions.
-- **Object Storage**: S3-compatible buckets for persisting user assets (images, PDFs) and compiled outputs.
+**Persistence (Supabase)**
+- PostgreSQL stores users/projects/sub-projects/credits/marketplace metadata.
+- Storage (S3-compatible) stores uploaded assets and generated outputs.
 
-### 🧩 High-Level Architecture
+**Engines**
+- **Tectonic** compiles LaTeX to PDF/PNG.
+- **Poppler** supports PDF tooling (where needed for preview/extract).
+- **Gemini** and **OCR.space** power AI Vision + text extraction.
+
+### 2) High-Level Architecture
+
 ```mermaid
 graph TD
-    subgraph "User Tier"
-        User((User)) <--> Frontend["Next.js 16 Gateway<br/>(React 19 / Konva / Tailwind 4)"]
-    end
+    U((User)) --> FE["Next.js Frontend\n(Editors + Preview UI)"]
+    FE <--> API["FastAPI Backend\n(routers: projects/templates/marketplace\n+ table/diagram/vision/ai)"]
 
-    subgraph "Logic Tier"
-        Frontend <--> Backend["FastAPI Orchestrator<br/>(JWT Auth / Credit Middleware)"]
-    end
+    API <--> DB[("Supabase PostgreSQL\nData Model")]
+    API --> ST["Supabase Storage\nAssets + Outputs"]
 
-    subgraph "Service Engine Tier"
-        Backend --> Gemini["AI Engine<br/>(Gemini 2.0 Flash)"]
-        Backend --> OCR["Text Engine<br/>(OCR.space API)"]
-        Backend --> Tectonic["Compilation Engine<br/>(Tectonic PDF Suite)"]
-    end
-    
-    subgraph "Persistence Tier"
-        Backend <--> DB[(PostgreSQL Supabase<br/>Relational Data)]
-        Backend --> S3["Asset Storage<br/>(S3 Buckets)"]
-    end
+    API --> TEX["Tectonic\nLaTeX Compile"]
+    API --> POP["Poppler\nPDF utilities"]
+    API --> GEM["Gemini\nAI Vision/Copilot"]
+    API --> OCR["OCR.space\nText OCR"]
 ```
 
-### ⚡ Credit Enforcement & Data Lifecycle
-This lifecycle ensures that every expensive AI or compilation operation is authorized and billed correctly.
+### 3) Core Flows (End-to-End)
+
+#### A) Compile / Preview (PDF or PNG)
+This is the backbone of the experience: every editor can produce a preview.
+- Common endpoints: `/table/preview`, `/diagram/preview`, `/image_to_latex/preview`, `/handwritten_flowchart/compile`.
 
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant F as Frontend
-    participant B as Backend (Middlewares)
-    participant Cr as Credit Service
-    participant En as Service Engines
-    participant DB as PostgreSQL
+    participant FE as Frontend
+    participant API as Backend
+    participant DB as Supabase DB
+    participant TEX as Tectonic
 
-    Note over U,F: 1. Service Request
-    U->>F: Request Compilation / AI Feature
-    F->>B: POST /api/v1/service
-    
-    Note over B,Cr: 2. Credit Validation (Middleware)
-    B->>Cr: check_credits_availability(user_id, service_type)
-    Cr->>DB: Query current balance
-    DB-->>Cr: Return credits
-    Cr-->>B: Return availability (allow/block)
-    
-    alt Insufficient Credits
-        B-->>F: HTTP 402 Payment Required
-        F-->>U: Show Top-up Modal
-    else Sufficient Credits
-        Note over B,En: 3. Execution
-        B->>En: Execute (Tectonic/Gemini)
-        En-->>B: Return Result (PDF/LaTeX)
-        B->>Cr: consume_credits(...)
-        Cr->>DB: Update ledger & balance
-        B-->>F: Return Result + New Balance
-        F-->>U: Render Output
-    end
+    U->>FE: Click Preview / Compile
+    FE->>API: POST /.../preview (latex_code, output_format)
+    API->>DB: Authorize + load project/sub-project
+    API->>TEX: Compile LaTeX
+    TEX-->>API: PDF/PNG (+ logs)
+    API-->>FE: Return file (blob)
+    FE-->>U: Render preview
 ```
+
+#### B) AI Vision (Image → LaTeX / Handwriting → TikZ)
+Turns images into editable LaTeX/TikZ which can then be previewed via the same compile pipeline.
+- Common endpoints: `/image_to_latex/pix2tex-formula`, `/handwritten_flowchart/generate-latex`.
+
+#### C) Credits (User-Facing Behavior)
+Some operations may be credit-protected.
+- When credits are insufficient the backend can respond with **HTTP 402**; the frontend shows an upgrade/top-up flow.
 
 ---
 
 ## 🏢 Deep Dive: TizKit Features
 
 ### 1. 🏢 Project Management & Team Collaboration
-Gone are the days of emailing `.tex` files. TizKit introduces a robust, permission-aware file system.
-- **Mother Projects**: The top-level container holding all assets, templates, and sub-projects.
+TizKit organizes your work as Projects with specialized Sub-projects.
+- **Projects**: Top-level containers for documents and assets.
+- **Sub-projects**: Focused components such as **Document**, **Table**, **Diagram**, and AI-assisted extraction outputs.
 - **Role-Based Access Control (RBAC)**:
     - **Owners**: Full authority. Can manage projects, billing, and collaborators.
     - **Collaborators**: Can edit content and trigger compilations. Restricted from destructive actions.
@@ -115,7 +152,7 @@ TizKit features a comprehensive marketplace for LaTeX templates, allowing users 
 - **Categories**: Browse through structured categories such as Academic, Professional (CV/Resume), Presentation, and Diagrams.
 - **Community Driven**: Rate and review templates from other creators.
 - **Monetization**: Support for both free and premium templates with an integrated credit system.
-- **One-Click Import**: Instantly clone marketplace templates into your personal project space.
+- **One-Click Import**: Clone a template into your own project space.
 
 ### 3. 📊 The Intelligent Table Engineer
 Building complex tables in LaTeX (`\multirow`, `\multicolumn`, `\cmidrule`) is notoriously difficult. TizKit's **Table Editor** solves this.
@@ -130,11 +167,13 @@ A `React-Konva` powered canvas for drawing vector graphics that compile to seman
 - **Live Compilation**: The backend continuously translates your visual graph into `\node` and `\draw` commands.
 
 ### 5. 🧠 AI Vision & Copilot
-Leveraging **Gemini 2.0 Flash** and advanced OCR to bridge the analog-to-digital gap.
+Leveraging **Gemini (default: 2.5 Flash)** and OCR to bridge the analog-to-digital gap.
 - **Image-to-LaTeX**: Extract semantic math structure from screenshots or textbook photos.
 - **Handwritten Flowcharts**: Interpret hand-drawn sketches on paper and rebuild them as digital TikZ diagrams.
 - **AI Copilot**: An interactive assistant that helps you write LaTeX, explain errors, and suggest improvements.
 - **Self-Healing Code**: The AI attempts to autofix syntax errors detected in the Tectonic compilation logs.
+
+> Tip: The backend supports an optional **Groq** fallback provider for some AI workloads (see `GROQ_API_KEY` in the backend config).
 
 ### 6. 📝 Pre-built & Custom Templates
 - **System Templates**: Start instantly with professional defaults like:
@@ -143,6 +182,8 @@ Leveraging **Gemini 2.0 Flash** and advanced OCR to bridge the analog-to-digital
     - **Academic Paper**: Standard IEEE-style conference template.
     - **Homework Assignment**: Clean layout for math/science problem sets.
 - **Personal Library**: Save your favorite preambles (packages, macros) as global templates.
+
+Built-in “System Templates” live in the frontend as constants (see `frontend/lib/constants/prebuilt-projects.ts`).
 
 ---
 
@@ -227,7 +268,7 @@ Instead of writing one giant `main.tex`, you create specialized components:
 
 ---
 
-## � Installation (Local Dev)
+## 💻 Installation (Local Dev)
 
 ### Prerequisites
 - Python 3.10+
@@ -251,7 +292,9 @@ source venv/bin/activate
 
 pip install -r requirements.txt
 cp .env.example .env 
-# FILL IN: SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY
+# REQUIRED: DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SECRET_KEY
+# OPTIONAL (depending on features): SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY, OCR_SPACE_API_KEY, GROQ_API_KEY
+# Local tool paths (Windows-friendly defaults exist): TECTONIC_PATH, POPPLER_PATH, LATEX_TIMEOUT
 python main.py
 ```
 
@@ -264,18 +307,5 @@ npm run dev
 ```
 
 Visit `http://localhost:3000` to start engineering!
-
----
-
-## ⌨️ Productivity Shortcuts
-
-| Shortcut | Function | Context |
-|----------|----------|---------|
-| `Ctrl + S` | Force Save to Cloud | All Editors |
-| `Ctrl + Enter`| Quick Compile | Document Editor |
-| `Ctrl + /` | Toggle Help | Global |
-| `Esc` | Deselect / Close Modal | UI |
-
----
 
 **Crafted with ❤️ by the TizKit Team.**
