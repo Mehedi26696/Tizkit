@@ -14,7 +14,8 @@ import {
   Settings2,
   BookOpen,
   HelpCircle,
-  DollarSign
+  DollarSign,
+  Store
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ export default function Sidebar() {
     { label: "My Projects", href: "/projects", icon: FileText },
     { label: "My Templates", href: "/templates", icon: Zap },
     { label: "Invitations", href: "/invitations", icon: Mail },
+    { label: "Marketplace", href: "/dashboard/marketplace", icon: Store },
     { label: "Billing", href: "/dashboard/pricings", icon: DollarSign },
   ];
 

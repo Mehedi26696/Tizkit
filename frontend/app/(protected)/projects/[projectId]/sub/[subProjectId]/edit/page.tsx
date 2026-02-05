@@ -261,13 +261,21 @@ export default function SubProjectEditorPage({ params }: PageProps) {
     return latexCode.slice(selectionRange.start, selectionRange.end);
   }, [latexCode, selectionRange]);
 
-  const handleCopilotInsert = (snippet: string, _meta?: { userMessage?: string }) => {
+  const handleCopilotInsert = (snippet: string, meta?: { userMessage?: string; target?: string }) => {
     if (!snippet) return;
     lastLatexSourceRef.current = 'copilot';
 
     if ((subProject?.sub_project_type === 'table' || subProject?.sub_project_type === 'diagram') && autoUpdate) {
       setAutoUpdate(false);
       toast.info('Auto-update disabled to keep Copilot edits.');
+    }
+
+    if (meta?.target && latexCode.includes(meta.target)) {
+      const updated = latexCode.replace(meta.target, snippet);
+      setLatexCode(updated);
+      setSelectionRange(null);
+      setHasChanges(true);
+      return;
     }
 
     if (selectionRange && selectionRange.start !== selectionRange.end) {

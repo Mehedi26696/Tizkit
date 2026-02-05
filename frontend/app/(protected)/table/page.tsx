@@ -304,11 +304,33 @@ export default function TablePage() {
         selection={selectionText}
         errors={copilotErrors}
         editorType="table"
-        onInsert={(snippet) => {
+        onInsert={(snippet, meta) => {
           if (!snippet) return;
           if (autoUpdate) {
             setAutoUpdate(false);
             toast.info('Auto-update disabled to keep Copilot edits.');
+          }
+          if (meta?.target && latexCode.includes(meta.target)) {
+            const updated = latexCode.replace(meta.target, snippet);
+            setLatexCode(updated);
+            const parsed = parseTabular(updated);
+            if (parsed) {
+              setTableEditorInitialData(parsed);
+              setTableEditorSeed((prev) => prev + 1);
+              setTableData(parsed);
+            }
+            return;
+          }
+          if (selectionText && latexCode.includes(selectionText)) {
+            const updated = latexCode.replace(selectionText, snippet);
+            setLatexCode(updated);
+            const parsed = parseTabular(updated);
+            if (parsed) {
+              setTableEditorInitialData(parsed);
+              setTableEditorSeed((prev) => prev + 1);
+              setTableData(parsed);
+            }
+            return;
           }
           const tabularRegex = /\\begin\{tabular\}[\s\S]*?\\end\{tabular\}/;
           if (tabularRegex.test(latexCode) && tabularRegex.test(snippet)) {

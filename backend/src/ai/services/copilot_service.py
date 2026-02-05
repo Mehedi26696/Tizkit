@@ -31,9 +31,10 @@ class CopilotService:
             f"Current LaTeX (may be empty):\n{latex}\n\n"
             f"Selection (may be empty):\n{selection}\n\n"
             f"Compilation errors (may be empty):\n{errors}\n\n"
-            "Respond with two sections:\n"
+            "Respond with three sections:\n"
             "REPLY: <human friendly explanation>\n"
             "INSERT: <latex snippet to insert>\n"
+            "TARGET: <exact snippet from Current LaTeX to replace; leave blank if append>\n"
         )
 
     async def _call_gemini(self, prompt: str) -> Dict[str, Any]:
@@ -107,25 +108,34 @@ class CopilotService:
         return result
 
 
-def parse_reply_insert(text: str) -> tuple[str, str]:
+def parse_reply_insert(text: str) -> tuple[str, str, str]:
     reply = ""
     insert = ""
+    target = ""
     if not text:
-        return reply, insert
+        return reply, insert, target
 
     lower = text.lower()
-    reply_idx = lower.find("reply:")
-    insert_idx = lower.find("insert:")
+    markers = ["reply:", "insert:", "target:"]
 
-    if reply_idx != -1 and insert_idx != -1:
-        if reply_idx < insert_idx:
-            reply = text[reply_idx + len("reply:"):insert_idx].strip()
-            insert = text[insert_idx + len("insert:"):].strip()
-        else:
-            insert = text[insert_idx + len("insert:"):reply_idx].strip()
-            reply = text[reply_idx + len("reply:"):].strip()
-    else:
+    def extract_section(marker: str) -> str:
+        start_idx = lower.find(marker)
+        if start_idx == -1:
+            return ""
+        start = start_idx + len(marker)
+        end = len(text)
+        for other in markers:
+            other_idx = lower.find(other)
+            if other_idx != -1 and other_idx > start_idx:
+                end = min(end, other_idx)
+        return text[start:end].strip()
+
+    reply = extract_section("reply:")
+    insert = extract_section("insert:")
+    target = extract_section("target:")
+
+    if not reply and not insert and not target:
         reply = text.strip()
         insert = text.strip()
 
-    return reply, insert
+    return reply, insert, target

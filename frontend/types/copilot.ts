@@ -14,5 +14,6 @@ export interface CopilotChatRequest {
 export interface CopilotChatResponse {
   reply: string;
   insert: string;
+  target?: string;
   provider: string;
 }

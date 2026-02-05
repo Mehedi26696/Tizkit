@@ -20,11 +20,12 @@ async def copilot_chat(
             raise HTTPException(status_code=400, detail=result.get("error", "AI request failed"))
 
         content = result.get("data", {}).get("content", "")
-        reply, insert = parse_reply_insert(content)
+        reply, insert, target = parse_reply_insert(content)
 
         return CopilotChatResponse(
             reply=reply or "",
             insert=insert or content,
+            target=target or None,
             provider=payload.provider or "auto"
         )
     except HTTPException:

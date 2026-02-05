@@ -287,13 +287,20 @@ export const EditorPage: React.FC<EditorPageProps> = ({ onNavigateToHome, projec
     return latexCode.slice(selectionRange.start, selectionRange.end);
   }, [latexCode, selectionRange]);
 
-  const handleCopilotInsert = (snippet: string) => {
+  const handleCopilotInsert = (snippet: string, meta?: { userMessage?: string; target?: string }) => {
     if (!snippet) return;
     lastLatexSourceRef.current = 'copilot';
 
     if ((activeTab === 'table' || activeTab === 'diagram') && autoUpdate) {
       setAutoUpdate(false);
       toast.info('Auto-update disabled to keep Copilot edits.');
+    }
+
+    if (meta?.target && latexCode.includes(meta.target)) {
+      const updated = latexCode.replace(meta.target, snippet);
+      setLatexCode(updated);
+      setSelectionRange(null);
+      return;
     }
 
     if (selectionRange && selectionRange.start !== selectionRange.end) {

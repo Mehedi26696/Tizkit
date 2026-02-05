@@ -18,4 +18,5 @@ class CopilotChatRequest(BaseModel):
 class CopilotChatResponse(BaseModel):
     reply: str
     insert: str
+    target: Optional[str] = None
     provider: str

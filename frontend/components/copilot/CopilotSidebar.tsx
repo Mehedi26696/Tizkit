@@ -13,7 +13,7 @@ interface CopilotSidebarProps {
   selection?: string;
   errors?: string;
   editorType?: string;
-  onInsert: (latexSnippet: string, meta?: { userMessage?: string }) => void;
+  onInsert: (latexSnippet: string, meta?: { userMessage?: string; target?: string }) => void;
 }
 
 interface ChatMessage {
@@ -21,6 +21,7 @@ interface ChatMessage {
   content: string;
   insert?: string;
   request?: string;
+  target?: string;
 }
 
 export default function CopilotSidebar({
@@ -58,7 +59,7 @@ export default function CopilotSidebar({
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: response.reply, insert: response.insert, request: trimmed },
+        { role: "assistant", content: response.reply, insert: response.insert, request: trimmed, target: response.target },
       ]);
     } catch (error: any) {
       setMessages((prev) => [
@@ -111,7 +112,7 @@ export default function CopilotSidebar({
             <div className="whitespace-pre-wrap">{msg.content}</div>
             {msg.role === "assistant" && msg.insert && (
               <button
-                onClick={() => onInsert(msg.insert || "", { userMessage: msg.request })}
+                onClick={() => onInsert(msg.insert || "", { userMessage: msg.request, target: msg.target })}
                 className="mt-2 text-[10px] uppercase tracking-widest font-black text-[#FA5F55]"
               >
                 Insert via Chat
